@@ -62,6 +62,7 @@ export class Game {
       if (e.code === 'KeyF' && this.flash) this.flash.visible = !this.flash.visible;
       if (e.code === 'Tab') this.showBoard(true);
       if (e.code === 'Space' && this.player && !this.player.alive) this.cycleSpectate();
+      if (e.code === 'Space' && this.player && this.player.alive) this.jumpReq = true;
     });
     window.addEventListener('keyup', e => { this.keys.delete(e.code); if (e.code === 'Tab') this.showBoard(false); });
     window.addEventListener('blur', () => this.keys.clear());
@@ -99,6 +100,7 @@ export class Game {
     $('btnRun').addEventListener('pointerup', () => { this.sprintBtn = false; });
     $('btnRun').addEventListener('pointerleave', () => { this.sprintBtn = false; });
     $('btnLight').addEventListener('pointerdown', () => { if (this.flash) this.flash.visible = !this.flash.visible; });
+    $('btnJump').addEventListener('pointerdown', () => { this.jumpReq = true; });
     $('pauseBtn').addEventListener('click', () => this.onEvent('pause'));
     this.canvas.addEventListener('click', () => { if (this.state === 'dead') this.cycleSpectate(); });
   }
@@ -358,7 +360,7 @@ export class Game {
     const free = this.map.free, W = this.world, o = this.opts;
     const pick = () => free[Math.floor(Math.random() * free.length)];
     const pw = W.cellWorld(pick());
-    this.player = { type: 'player', name: o.name || 'Jugador', x: pw.x, z: pw.z, r: 0.35, alive: true, stamina: 1, tired: false, bob: 0 };
+    this.player = { type: 'player', name: o.name || 'Jugador', x: pw.x, z: pw.z, r: 0.35, alive: true, stamina: 1, tired: false, bob: 0, y: 0, vy: 0 };
     this.yaw = Math.random() * Math.PI * 2; this.pitch = 0;
 
     const names = CPU_NAMES.slice().sort(() => Math.random() - 0.5).slice(0, o.cpus);
@@ -447,8 +449,15 @@ export class Game {
     const sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
     const dx = (-sn * f + cs * s) * speed * dt, dz = (-cs * f - sn * s) * speed * dt;
     this.world.move(p, dx, dz);
+    // salto
+    if (this.jumpReq && p.y === 0) { p.vy = 5.4; this.sfx.thud(0.12); }
+    this.jumpReq = false;
+    if (p.y > 0 || p.vy > 0) {
+      p.vy -= 15 * dt; p.y += p.vy * dt;
+      if (p.y <= 0) { p.y = 0; p.vy = 0; this.sfx.step(false); }
+    }
     p.running = speed > 5;
-    if (moving) {
+    if (moving && p.y === 0) {
       p.bob += dt * (p.running ? 11 : 7.5);
       this.stepT -= dt;
       if (this.stepT <= 0) { this.sfx.step(p.running); this.stepT = p.running ? 0.28 : 0.45; }
@@ -610,7 +619,7 @@ export class Game {
     const cam = this.camera, p = this.player, t = this.time;
     let fx = p.x, fz = p.z;
     if (p.alive) {
-      cam.position.set(p.x, 1.65 + Math.sin(p.bob) * (p.running ? 0.06 : 0.035) * (p.moving ? 1 : 0), p.z);
+      cam.position.set(p.x, 1.65 + p.y + Math.sin(p.bob) * (p.running ? 0.06 : 0.035) * (p.moving ? 1 : 0), p.z);
       cam.rotation.set(this.pitch, this.yaw, Math.sin(p.bob * 0.5) * 0.004 * (p.moving ? 1 : 0));
       if (this.flash) this.flash.position.set(0.14, -0.1 + Math.sin(p.bob) * 0.004, 0);
     } else {

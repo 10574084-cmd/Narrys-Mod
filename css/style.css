@@ -103,3 +103,15 @@ body.touch #mini { width: 96px; height: 96px; left: 56px; }
 .meme .x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border: 0; border-radius: 50%; background: rgba(0,0,0,.7); color: #fff; font-size: 11px; cursor: pointer; }
 .meme .tag { position: absolute; top: 4px; left: 4px; font-size: .6rem; background: rgba(0,0,0,.7); padding: 1px 4px; border-radius: 4px; }
 body.drag #menu::after { content: "Suelta tus imágenes aquí"; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,42,61,.25); font: 900 2rem Impact, sans-serif; z-index: 50; pointer-events: none; }
+
+.screen { animation: fadein .25s; }
+@keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.mainBtns { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 26px auto 8px; width: min(420px, 100%); }
+.mainBtns .play { margin: 0 0 6px; }
+.menuBtn { width: 100%; padding: 14px; border: 1px solid #34343e; border-radius: 10px; background: rgba(18,18,22,.9); color: #fff; font: 700 1rem inherit; cursor: pointer; transition: .15s; }
+.menuBtn:hover { border-color: var(--red); background: #1d1d24; transform: translateX(4px); }
+.navRow { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; }
+.navRow .menuBtn { width: auto; padding: 12px 22px; }
+.navRow .play { margin: 0; width: auto; padding: 12px 34px; font-size: 1.2rem; }
+.panel.narrow { max-width: 640px; margin: 0 auto; }
+#btnJump { position: absolute; right: 120px; bottom: 60px; width: 70px; height: 70px; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.14); color: #fff; font-weight: 800; font-size: .6rem; }

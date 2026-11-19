@@ -28,7 +28,20 @@
         <p class="sub">NEXTBOTS 3D · SOBREVIVE A LOS MEMES</p>
       </header>
 
-      <div class="cols">
+      <!-- PANTALLA PRINCIPAL -->
+      <div id="scrMain" class="screen">
+        <div class="mainBtns">
+          <button id="play" class="play">▶ INICIAR</button>
+          <button class="menuBtn" data-go="scrGame">🗺️ Mapa y partida</button>
+          <button class="menuBtn" data-go="scrOpts">⚙️ Opciones</button>
+          <button class="menuBtn" data-go="scrMemes">🖼️ Memes / nextbots</button>
+        </div>
+        <p class="hint" id="summary" style="text-align:center"></p>
+      </div>
+
+      <!-- MAPA Y PARTIDA -->
+      <div id="scrGame" class="screen hidden">
+        <div class="cols">
         <section class="panel">
           <h2>Mapa</h2>
           <div id="maps" class="maps"></div>
@@ -53,6 +66,14 @@
             </select>
           </label>
 
+        </section>
+        </div>
+        <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button><button id="play2" class="play small">▶ INICIAR</button></div>
+      </div>
+
+      <!-- OPCIONES -->
+      <div id="scrOpts" class="screen hidden">
+        <section class="panel narrow">
           <h2>Gráficos</h2>
           <label>Calidad
             <select id="pQual">
@@ -66,6 +87,15 @@
           <label>Campo de visión <b id="vFov"></b><input id="pFov" type="range" min="60" max="110" value="80"></label>
           <label>Sensibilidad <b id="vSens"></b><input id="pSens" type="range" min="2" max="30" value="10"></label>
 
+          <h2>Controles</h2>
+          <p class="hint"><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Esc</b> pausa</p>
+        </section>
+        <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
+      </div>
+
+      <!-- MEMES -->
+      <div id="scrMemes" class="screen hidden">
+        <section class="panel narrow">
           <h2>Memes / imágenes de nextbots</h2>
           <div class="row">
             <label class="btn small" for="pFile">＋ Subir PNG / GIF / WEBM</label>
@@ -76,12 +106,11 @@
           <div id="memeList"></div>
           <label class="check"><input id="pOnly" type="checkbox"> Usar solo mis imágenes</label>
         </section>
+        <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>
 
-      <button id="play" class="play">JUGAR</button>
-
       <footer>
-        <p><b>WASD</b> mover · <b>Shift</b> correr · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Esc</b> pausa</p>
+        <p><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>F</b> linterna · <b>Esc</b> pausa</p>
         <p class="hint">Sobrevive hasta que acabe el tiempo. Los nextbots persiguen al jugador más cercano y cada vez van más rápido.</p>
       </footer>
     </div>
@@ -103,6 +132,7 @@
       <div id="joy"><div id="knob"></div></div>
       <button id="btnRun">CORRER</button>
       <button id="btnLight">🔦</button>
+      <button id="btnJump">SALTAR</button>
     </div>
   </div>
 

@@ -101,6 +101,7 @@ const game = new Game($('c'));
 const show = (id, on) => $(id).classList.toggle('hidden', !on);
 
 function toMenu() {
+  go('scrMain');
   game.stop(); show('hud', false); show('over', false); show('pause', false); show('scare', false); show('menu', true);
   if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -148,7 +149,14 @@ game.onEvent = (type, d) => {
   }
 };
 
-$('play').onclick = play;
+$('play').onclick = play; $('play2').onclick = play;
+function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id)); if (id === 'scrMain') updSummary(); $('menu').scrollTop = 0; }
+document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });
+function updSummary() {
+  const q = { low: 'Bajo', med: 'Medio', high: 'Alto', rt: 'Raytracing' }[cfg.quality];
+  $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
+}
+updSummary();
 $('retry').onclick = () => { show('over', false); play(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = toMenu;
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
