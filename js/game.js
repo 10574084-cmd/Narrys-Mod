@@ -439,7 +439,8 @@ export class Game {
       halo.scale.set(5.2, 5.2, 1); halo.visible = false;
       this.scene.add(mesh, halo);
       this.bots.push({ type: 'bot', name: meme.name, meme, bw: Math.min(4.2, Math.max(1.2, 2.5 * meme.aspect)), x: 0, z: 0, r: 0.55, active: false, spawnAt: grace + i * gap, mesh, halo,
-        target: null, retarget: 0, path: null, pi: 0, repath: 0, lx: 0, lz: 0, stuckT: 0, phase: Math.random() * 6 });
+        target: null, retarget: 0, path: null, pi: 0, repath: 0, lx: 0, lz: 0, stuckT: 0, phase: Math.random() * 6,
+        state: 'patrol', yaw: Math.random() * 6.28, visT: Math.random() * 0.25, stateT: 0, lostT: 0, lastX: 0, lastZ: 0, goalX: null, goalZ: null });
     }
   }
 
@@ -527,7 +528,7 @@ export class Game {
       const d = Math.hypot(c.x - P.x, c.z - P.z);
       if (d > bd) { bd = d; best = c; }
     }
-    b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.path = null; b.stun = secs;
+    b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.path = null; b.stun = secs; b.state = 'patrol'; b.goalX = null; b.target = null;
   }
 
   explode(x, y, z, def) {
@@ -587,7 +588,8 @@ export class Game {
       if (d > bd) { bd = d; best = c; }
     }
     b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.active = true; b.mesh.visible = true; b.halo.visible = true;
-    this.toast(`¡${b.name.toUpperCase()} te está buscando!`, 2600);
+    b.state = 'patrol'; b.goalX = null; b.stateT = 0;
+    this.toast(`¡${b.name.toUpperCase()} apareció!`, 2200);
     this.sfx.spawn();
   }
 
@@ -712,28 +714,46 @@ export class Game {
     c.path = W.path(c.x, c.z, best.x, best.z); c.pi = 0;
   }
 
-  updateBot(b, dt) {
-    if (!b.active) { if (this.time >= b.spawnAt) this.activateBot(b); return; }
-    if (b.stun > 0) { b.stun -= dt; return; }
-    const W = this.world;
-    b.retarget -= dt;
-    if (b.retarget <= 0 || !b.target || !b.target.alive) {
-      b.retarget = 0.8 + Math.random() * 0.4;
-      let best = null, bd = 1e9;
-      const cand = [this.player, ...this.cpus];
-      for (const e of cand) {
-        if (!e.alive) continue;
-        const d = Math.hypot(e.x - b.x, e.z - b.z) * (e.type === 'player' ? 0.6 : 1);
-        if (d < bd) { bd = d; best = e; }
-      }
-      b.target = best; b.path = null;
+  sightRange() { return 30 + this.opts.diff * 5; }
+
+  // ¿ve el nextbot a esta entidad? Distancia + línea de visión + campo de visión (solo si aún no está alerta)
+  botSees(b, e) {
+    const dx = e.x - b.x, dz = e.z - b.z, d = Math.hypot(dx, dz);
+    if (d > this.sightRange()) return false;
+    if (b.state === 'patrol' && d > 6) {
+      if ((dx * Math.sin(b.yaw) + dz * Math.cos(b.yaw)) / (d || 1) < 0.26) return false; // fuera de su visión (~150°)
     }
-    const t = b.target; if (!t) return;
-    const sp = this.botSpeed();
-    let tx = t.x, tz = t.z;
-    if (!W.los(b.x, b.z, t.x, t.z, 0.45)) {
+    return this.world.los(b.x, b.z, e.x, e.z, 0.15);
+  }
+
+  onSpotted(b) {
+    if (this.time - (this.lastSpot === undefined ? -9 : this.lastSpot) < 2.5) return;
+    this.lastSpot = this.time;
+    this.toast(`¡${b.name.toUpperCase()} te vio!`, 1400); this.sfx.alert();
+  }
+
+  pickPatrol(b) {
+    const free = this.map.free, W = this.world;
+    const alive = [this.player, ...this.cpus].filter(e => e.alive);
+    let gx, gz;
+    if (alive.length && Math.random() < 0.55) { // corazonada: ronda por donde hay gente, sin saber dónde exactamente
+      const e = (this.player.alive && Math.random() < 0.35) ? this.player : alive[Math.floor(Math.random() * alive.length)];
+      for (let t = 0; t < 14; t++) {
+        const c = W.cellWorld(free[Math.floor(Math.random() * free.length)]);
+        const d = Math.hypot(c.x - e.x, c.z - e.z);
+        if (d > 6 && d < 24) { gx = c.x; gz = c.z; break; }
+      }
+    }
+    if (gx === undefined) { const c = W.cellWorld(free[Math.floor(Math.random() * free.length)]); gx = c.x; gz = c.z; }
+    b.goalX = gx; b.goalZ = gz; b.path = null; b.repath = 0; b.stateT = 0;
+  }
+
+  // camina hacia (gx,gz) (recto si ve el punto, por A* si no). Devuelve la distancia que falta.
+  botGo(b, gx, gz, sp, dt) {
+    const W = this.world; let tx = gx, tz = gz;
+    if (!W.los(b.x, b.z, gx, gz, 0.45)) {
       b.repath -= dt;
-      if (!b.path || b.repath <= 0) { b.path = W.path(b.x, b.z, t.x, t.z); b.pi = 0; b.repath = 0.45 + Math.random() * 0.25; }
+      if (!b.path || b.repath <= 0) { b.path = W.path(b.x, b.z, gx, gz); b.pi = 0; b.repath = 0.5 + Math.random() * 0.3; }
       if (b.path.length) {
         while (b.pi < b.path.length - 1 && Math.hypot(b.path[b.pi].x - b.x, b.path[b.pi].z - b.z) < 0.7) b.pi++;
         tx = b.path[b.pi].x; tz = b.path[b.pi].z;
@@ -741,13 +761,62 @@ export class Game {
     } else b.path = null;
     const dx = tx - b.x, dz = tz - b.z, d = Math.hypot(dx, dz) || 1;
     W.move(b, dx / d * sp * dt, dz / d * sp * dt);
+    let da = Math.atan2(dx, dz) - b.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); b.yaw += da * Math.min(1, dt * 8);
     b.stuckT += dt;
-    if (b.stuckT > 1) { if (Math.hypot(b.x - b.lx, b.z - b.lz) < 0.4) { b.path = null; b.repath = 0; } b.lx = b.x; b.lz = b.z; b.stuckT = 0; }
-    // captura
-    const dd = Math.hypot(t.x - b.x, t.z - b.z);
-    if (dd < b.r + t.r + 0.35) this.kill(t, b);
-    else for (const e of [this.player, ...this.cpus]) {
-      if (e.alive && e !== t && Math.hypot(e.x - b.x, e.z - b.z) < b.r + e.r + 0.3) this.kill(e, b);
+    if (b.stuckT > 1) { if (Math.hypot(b.x - b.lx, b.z - b.lz) < 0.4) { b.path = null; b.repath = 0; b.goalX = null; } b.lx = b.x; b.lz = b.z; b.stuckT = 0; }
+    return Math.hypot(gx - b.x, gz - b.z);
+  }
+
+  updateBot(b, dt) {
+    if (!b.active) { if (this.time >= b.spawnAt) this.activateBot(b); return; }
+    if (b.stun > 0) { b.stun -= dt; return; }
+    const P = this.player, sp = this.botSpeed();
+    b.stateT += dt;
+
+    // vista (cada ~0.2 s, desfasada entre nextbots)
+    b.visT -= dt;
+    if (b.visT <= 0) {
+      b.visT = 0.18 + Math.random() * 0.08;
+      let seen = null, sd = 1e9;
+      for (const e of [P, ...this.cpus]) {
+        if (!e.alive) continue;
+        const d = Math.hypot(e.x - b.x, e.z - b.z);
+        if (d < sd && this.botSees(b, e)) { sd = d; seen = e; }
+      }
+      if (seen) {
+        if (b.state !== 'chase' && seen === P) this.onSpotted(b);
+        if (b.state !== 'chase') { b.path = null; b.repath = 0; }
+        b.state = 'chase'; b.target = seen; b.lastX = seen.x; b.lastZ = seen.z; b.stateT = 0;
+      } else if (b.state === 'chase') {
+        b.state = 'search'; b.path = null; b.repath = 0; b.stateT = 0; b.lostT = 0; b.searchX = b.lastX; b.searchZ = b.lastZ;
+      }
+    }
+
+    if (b.state === 'chase') {
+      const t = b.target;
+      if (t && t.alive) { b.lastX = t.x; b.lastZ = t.z; this.botGo(b, t.x, t.z, sp, dt); }
+    } else if (b.state === 'search') {
+      // va al último sitio donde vio a alguien, mira un poco alrededor y se rinde
+      const left = this.botGo(b, b.searchX, b.searchZ, sp * 0.85, dt);
+      if (left < 1.3) {
+        b.lostT += dt;
+        if (b.lostT > 1.8) { // pequeño rastreo cerca del último punto
+          b.lostT = 0;
+          for (let k = 0; k < 8; k++) {
+            const nx = b.lastX + (Math.random() - 0.5) * 10, nz = b.lastZ + (Math.random() - 0.5) * 10;
+            if (!this.world.collides(nx, nz, 0.5)) { b.searchX = nx; b.searchZ = nz; b.path = null; break; }
+          }
+        }
+      }
+      if (b.stateT > 7) { b.state = 'patrol'; b.target = null; b.goalX = null; b.stateT = 0; }
+    } else { // patrulla
+      if (b.goalX === null || b.stateT > 14) this.pickPatrol(b);
+      if (this.botGo(b, b.goalX, b.goalZ, sp * 0.55, dt) < 1.5) b.goalX = null;
+    }
+
+    // captura por contacto
+    for (const e of [P, ...this.cpus]) {
+      if (e.alive && Math.hypot(e.x - b.x, e.z - b.z) < b.r + e.r + 0.35) this.kill(e, b);
     }
   }
 
@@ -831,6 +900,7 @@ export class Game {
       if (!b.active) continue;
       b.phase += dt * 7;
       b.mesh.material.color.setHex(b.stun > 0 ? 0x6f9bff : 0xffffff);
+      b.halo.material.opacity = b.state === 'chase' ? 1 : b.state === 'search' ? 0.6 : 0.3;
       const ang = Math.atan2(cam.position.x - b.x, cam.position.z - b.z);
       const sc = 1 + Math.sin(b.phase * 1.3) * 0.05;
       b.mesh.position.set(b.x, 1.45 + Math.sin(b.phase) * 0.08, b.z);
@@ -838,7 +908,7 @@ export class Game {
       const dir = new THREE.Vector3(b.x - cam.position.x, 0, b.z - cam.position.z).normalize().multiplyScalar(0.12);
       b.halo.position.set(b.x + dir.x, 1.45, b.z + dir.z);
       const d = Math.hypot(b.x - p.x, b.z - p.z);
-      if (p.alive) nearest = Math.min(nearest, d);
+      if (p.alive) nearest = Math.min(nearest, b.stun > 0 ? d * 3 : b.state === 'chase' && b.target === p ? d : b.state === 'search' ? d * 1.6 : d * 2.5);
       act.push({ b, d });
     }
     act.sort((a, b) => a.d - b.d);
@@ -942,7 +1012,7 @@ export class Game {
     x.clearRect(0, 0, 150, 150); x.drawImage(this.miniBase, 0, 0);
     for (const b of this.bots) {
       if (!b.active || Math.hypot(b.x - p.x, b.z - p.z) > 30) continue;
-      x.fillStyle = '#ff2a3d'; x.beginPath(); x.arc(b.x * k, b.z * k, 3, 0, 6.3); x.fill();
+      x.fillStyle = b.state === 'chase' ? '#ff2a3d' : '#a8602a'; x.beginPath(); x.arc(b.x * k, b.z * k, 3, 0, 6.3); x.fill();
     }
     for (const pk of this.pickups || []) {
       if (pk.taken) continue;

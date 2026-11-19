@@ -26,3 +26,6 @@ Hay armas en el suelo (se recogen caminando encima; las ves por el rayo de luz y
 
 ## Menú principal
 El fondo del menú es una escena 3D en vivo: humanoides corriendo y nextbots persiguiéndolos, con un nextbot gigante al fondo. El entorno cambia según el mapa que elijas (hay un selector rápido de mapas bajo el botón INICIAR).
+
+## IA de los nextbots
+Los nextbots ya no saben dónde estás: **solo te persiguen cuando te ven** (distancia, línea de visión y campo de visión de ~150° mientras patrullan; alcance 30–45 m según dificultad). Si te pierden, van al último sitio donde te vieron, buscan unos segundos y **se rinden** y vuelven a patrullar. Los nextbots no se avisan entre sí.

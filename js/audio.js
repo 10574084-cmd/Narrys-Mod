@@ -74,6 +74,15 @@ export class Sfx {
     }
   }
 
+  alert() {
+    if (!this.ctx) return;
+    const c = this.ctx, n = c.currentTime;
+    const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(520, n); o.frequency.exponentialRampToValueAtTime(1100, n + 0.18);
+    const g = c.createGain(); g.gain.setValueAtTime(0.28, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.35);
+    o.connect(g); g.connect(this.master); o.start(n); o.stop(n + 0.4);
+    this.burst(0.25, 2200, 0.35, 0.8);
+  }
+
   win() {
     if (!this.ctx) return;
     const c = this.ctx, n = c.currentTime;
