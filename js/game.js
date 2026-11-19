@@ -328,11 +328,21 @@ export class Game {
           const url = URL.createObjectURL(e.blob);
           if (e.kind === 'video') {
             const v = document.createElement('video');
-            v.loop = true; v.muted = true; v.playsInline = true; v.src = url;
+            v.loop = true; v.muted = false; v.volume = 1; v.playsInline = true; v.src = url;
             await new Promise(r => { v.onloadeddata = r; v.onerror = r; setTimeout(r, 4000); });
-            v.play().catch(() => {});
+            m.video = v;
+            const ctx = this.sfx.ctx; // audio posicional: se oye más fuerte y desde su lado al acercarse
+            if (ctx) {
+              try {
+                const src = ctx.createMediaElementSource(v), pn = ctx.createPanner(), gn = ctx.createGain();
+                pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 3; pn.maxDistance = 80; pn.rolloffFactor = 1.3;
+                gn.gain.value = 0; src.connect(pn); pn.connect(gn); gn.connect(this.sfx.master);
+                m.panner = pn; m.gain = gn; m.src = src;
+              } catch { m.panner = null; }
+            }
+            v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
             m.tex = new THREE.VideoTexture(v); m.aspect = (v.videoWidth / v.videoHeight) || 1;
-            m.dispose = () => { v.pause(); v.removeAttribute('src'); v.load(); URL.revokeObjectURL(url); };
+            m.dispose = () => { try { if (m.src) m.src.disconnect(); if (m.gain) m.gain.disconnect(); } catch { /* nada */ } v.pause(); v.removeAttribute('src'); v.load(); URL.revokeObjectURL(url); };
           } else {
             const img = new Image(); img.src = url; await img.decode().catch(() => {});
             m.aspect = (img.naturalWidth / img.naturalHeight) || 1; m.scare = url;
@@ -663,6 +673,7 @@ export class Game {
       const a = act[i];
       if (a) { L.position.set(a.b.x, 1.6, a.b.z); L.intensity = 28; } else { L.intensity = 0; L.position.y = -50; }
     });
+    this.updateVideoAudio();
     const threat = p.alive ? clamp(1 - (nearest - 4) / 36, 0, 1) : 0;
     this.sfx.setThreat(threat);
     $('vignette').style.opacity = (threat * threat * 0.95).toFixed(2);
@@ -679,6 +690,35 @@ export class Game {
       const u = li.userData;
       if (u.off > 0) { u.off -= dt; li.intensity = u.base * 0.08; }
       else { li.intensity = u.base; if (Math.random() < 0.004 * fl * 60 * dt) u.off = 0.05 + Math.random() * 0.25; }
+    }
+  }
+
+  updateVideoAudio() {
+    const cam = this.camera, ctx = this.sfx.ctx;
+    let any = false;
+    for (const m of this.memes.values()) {
+      if (!m.video) continue;
+      any = true;
+      let best = null, bd = 1e9;
+      for (const b of this.bots) {
+        if (!b.active || b.meme !== m) continue;
+        const d = Math.hypot(b.x - cam.position.x, b.z - cam.position.z);
+        if (d < bd) { bd = d; best = b; }
+      }
+      if (m.panner) {
+        if (best) {
+          const P = m.panner;
+          if (P.positionX) { P.positionX.value = best.x; P.positionY.value = 1.45; P.positionZ.value = best.z; } else P.setPosition(best.x, 1.45, best.z);
+          m.gain.gain.value = 2.2;
+        } else m.gain.gain.value = 0;
+      } else m.video.volume = best ? clamp(1 - bd / 45, 0, 1) ** 2 : 0;
+    }
+    if (any && ctx) {
+      const L = ctx.listener, d = cam.getWorldDirection(this._dir || (this._dir = new THREE.Vector3()));
+      if (L.positionX) {
+        L.positionX.value = cam.position.x; L.positionY.value = cam.position.y; L.positionZ.value = cam.position.z;
+        L.forwardX.value = d.x; L.forwardY.value = d.y; L.forwardZ.value = d.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0;
+      } else { L.setPosition(cam.position.x, cam.position.y, cam.position.z); L.setOrientation(d.x, d.y, d.z, 0, 1, 0); }
     }
   }
 
@@ -733,6 +773,16 @@ export class Game {
     x.beginPath(); x.moveTo(6, 0); x.lineTo(-4, 4); x.lineTo(-4, -4); x.closePath(); x.fill(); x.restore();
   }
 
-  pause() { if (this.state === 'playing' || this.state === 'dead') { this.prevState = this.state; this.state = 'paused'; this.sfx.suspend(); } }
-  unpause() { if (this.state === 'paused') { this.state = this.prevState || 'playing'; this.sfx.resume(); this.last = performance.now(); } }
+  pause() {
+    if (this.state === 'playing' || this.state === 'dead') {
+      this.prevState = this.state; this.state = 'paused'; this.sfx.suspend();
+      for (const m of this.memes ? this.memes.values() : []) if (m.video) m.video.pause();
+    }
+  }
+  unpause() {
+    if (this.state === 'paused') {
+      this.state = this.prevState || 'playing'; this.sfx.resume(); this.last = performance.now();
+      for (const m of this.memes ? this.memes.values() : []) if (m.video) m.video.play().catch(() => {});
+    }
+  }
 }
