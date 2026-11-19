@@ -93,6 +93,8 @@ export class Game {
       if (e.code === 'Tab') this.showBoard(true);
       if (e.code === 'Space' && this.player && !this.player.alive) this.cycleSpectate();
       if (e.code === 'Space' && this.player && this.player.alive) this.jumpReq = true;
+      const dm = /^(Digit|Numpad)([1-3])$/.exec(e.code);
+      if (dm && this.state === 'playing' && this.player && this.player.alive && this.inv) this.equip(+dm[2] - 1);
     });
     window.addEventListener('keyup', e => { this.keys.delete(e.code); if (e.code === 'Tab') this.showBoard(false); });
     window.addEventListener('blur', () => this.keys.clear());
@@ -132,6 +134,12 @@ export class Game {
     $('btnLight').addEventListener('pointerdown', () => { if (this.flash) this.flash.visible = !this.flash.visible; });
     $('btnJump').addEventListener('pointerdown', () => { this.jumpReq = true; });
     $('btnFire').addEventListener('pointerdown', () => { this.fireReq = true; });
+    document.addEventListener('wheel', e => { if (document.pointerLockElement === this.canvas && this.state === 'playing' && this.inv && this.player.alive) this.cycleWeapon(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+    this.slotEls = [0, 1, 2].map(i => {
+      const d = document.createElement('div'); d.className = 'slot empty'; d.innerHTML = `<i>${i + 1}</i><b></b><span></span>`;
+      d.addEventListener('pointerdown', () => { if (this.state === 'playing' && this.inv) this.equip(i); });
+      $('hotbar').appendChild(d); return d;
+    });
     document.addEventListener('mousedown', e => { if (e.button === 0 && document.pointerLockElement === this.canvas && this.state === 'playing') this.fireReq = true; });
     $('pauseBtn').addEventListener('click', () => this.onEvent('pause'));
     this.canvas.addEventListener('click', () => { if (this.state === 'dead') this.cycleSpectate(); });
@@ -191,7 +199,7 @@ export class Game {
     if (this.memes) { for (const m of this.memes.values()) { if (m.dispose) m.dispose(); if (m.tex) m.tex.dispose(); } this.memes = null; }
     this.animated = [];
     for (const o of [this.flash, this.flash && this.flash.target, this.muzzle, this.fpModel]) if (o) this.camera.remove(o);
-    this.muzzle = null; this.fpModel = null; this.weapon = null; this.pickups = []; this.fx = [];
+    this.muzzle = null; this.fpModel = null; this.weapon = null; this.pickups = []; this.fx = []; this.inv = null; this.sel = -1;
     this.scene = null; this.cpus = []; this.bots = []; this.flash = null;
     this.keys.clear(); this.joy.x = this.joy.y = 0;
     this.renderer.renderLists.dispose();
@@ -447,7 +455,7 @@ export class Game {
   // 1 bazuca en todo el mapa + 8 armas más (5 revólveres y 3 escopetas)
   spawnPickups(pick, pw) {
     const W = this.world;
-    this.weapon = null; this.pickups = []; this.fx = [];
+    this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
     const list = ['bazooka', 'revolver', 'revolver', 'revolver', 'revolver', 'revolver', 'shotgun', 'shotgun', 'shotgun'];
     for (const type of list) {
       let spot = null;
@@ -468,18 +476,48 @@ export class Game {
     }
   }
 
-  giveWeapon(type) {
-    const def = WEAPONS[type];
-    this.weapon = { type, ammo: def.ammo, cd: 0.4 };
-    if (this.fpModel) this.camera.remove(this.fpModel);
+  showWeaponModel(type) {
+    if (this.fpModel) { this.camera.remove(this.fpModel); this.fpModel = null; }
+    if (!type) return;
     const m = this.fpModel = weaponModel(type);
     m.traverse(o => { if (o.isMesh) { o.material.depthTest = false; o.renderOrder = 999; o.material.metalness = 0.15; o.material.color.multiplyScalar(0.3); } });
     this.fpBase = type === 'bazooka' ? new THREE.Vector3(0.2, -0.2, -0.45) : type === 'shotgun' ? new THREE.Vector3(0.2, -0.17, -0.35) : new THREE.Vector3(0.18, -0.15, -0.35);
     m.position.copy(this.fpBase); m.rotation.y = 0.05;
     this.camera.add(m);
-    this.toast(`Recogiste: ${def.name} (${def.ammo} ${type === 'bazooka' ? 'cohetes' : 'balas'})`, 2200);
-    this.feed(`🔫 Conseguiste ${def.name}`, true);
+  }
+
+  // recoger: si ya tienes ese arma se suma munición (máx. x3); si no, va al primer slot libre y se equipa
+  giveWeapon(type) {
+    const def = WEAPONS[type], cap = def.ammo * 3;
+    const slot = this.inv.find(s => s && s.type === type);
+    if (slot) {
+      const before = slot.ammo; slot.ammo = Math.min(cap, slot.ammo + def.ammo); this.emptyT = undefined;
+      const add = slot.ammo - before;
+      this.toast(add > 0 ? `+${add} munición · ${def.name} (${slot.ammo})` : `${def.name}: munición al máximo (${cap})`, 1800);
+      this.feed(`🔫 Más munición de ${def.name}`, true);
+    } else {
+      const i = this.inv.findIndex(s => !s);
+      if (i < 0) return;
+      this.inv[i] = { type, ammo: def.ammo, cd: 0.4 };
+      this.toast(`Recogiste: ${def.name} (slot ${i + 1})`, 2200);
+      this.feed(`🔫 Conseguiste ${def.name}`, true);
+      this.equip(i, true);
+    }
     this.sfx.thud(0.2);
+  }
+
+  // equipar un slot (pulsar el mismo slot otra vez guarda el arma)
+  equip(i, force = false) {
+    const s = this.inv[i]; if (!s) return;
+    if (this.sel === i && !force) { this.sel = -1; this.weapon = null; this.showWeaponModel(null); return; }
+    this.sel = i; this.weapon = s; s.cd = Math.max(s.cd, 0.25); this.recoil = 0.6; this.emptyT = undefined;
+    this.showWeaponModel(s.type);
+  }
+
+  cycleWeapon(dir) {
+    const idx = [0, 1, 2].filter(i => this.inv[i]); if (!idx.length) return;
+    const cur = idx.indexOf(this.sel);
+    this.equip(cur < 0 ? (dir > 0 ? idx[0] : idx[idx.length - 1]) : idx[(cur + dir + idx.length) % idx.length], true);
   }
 
   fire() {
@@ -559,7 +597,11 @@ export class Game {
       w.cd = Math.max(0, w.cd - dt);
       if (w.ammo <= 0 && this.emptyT !== undefined) {
         this.emptyT -= dt;
-        if (this.emptyT <= 0) { this.emptyT = undefined; this.camera.remove(this.fpModel); this.fpModel = null; this.weapon = null; this.toast('Sin munición: arma descartada', 1400); }
+        if (this.emptyT <= 0) {
+          this.emptyT = undefined; this.inv[this.sel] = null; this.sel = -1; this.weapon = null; this.showWeaponModel(null);
+          this.toast('Sin munición: arma descartada', 1400);
+          const nxt = this.inv.findIndex(s => s); if (nxt >= 0) this.equip(nxt, true);
+        }
       }
     }
     if (this.fpModel) { // retroceso y vaivén del arma
@@ -969,8 +1011,15 @@ export class Game {
   updateHud() {
     $('hudTime').textContent = fmt(Math.max(0, this.round - this.time));
     $('hudAlive').textContent = `👥 ${this.alive()} / ${this.cpus.length + 1}`;
-    const wh = $('weaponHud');
-    if (this.weapon) { const d = WEAPONS[this.weapon.type]; wh.textContent = `🔫 ${d.name} · ${this.weapon.ammo}`; wh.classList.remove('hidden'); } else wh.classList.add('hidden');
+    const sig = this.inv ? this.inv.map((s, i) => (s ? s.type + s.ammo : '-') + (i === this.sel ? '*' : '')).join('|') : '';
+    if (sig !== this._hbSig) {
+      this._hbSig = sig;
+      this.slotEls.forEach((el, i) => {
+        const s = this.inv && this.inv[i];
+        el.classList.toggle('empty', !s); el.classList.toggle('sel', !!s && i === this.sel);
+        el.querySelector('b').textContent = s ? WEAPONS[s.type].name : ''; el.querySelector('span').textContent = s ? s.ammo : '';
+      });
+    }
     $('btnFire').style.visibility = this.weapon ? 'visible' : 'hidden';
     const st = $('stamina'); st.style.width = (this.player.stamina * 100).toFixed(0) + '%'; st.classList.toggle('low', this.player.tired);
     this.drawMini();

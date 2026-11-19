@@ -22,7 +22,7 @@ WASD mover · Shift correr · Ratón mirar · F linterna · Tab lista de jugador
 Pon imágenes en `images/memes/` y lista sus nombres en `images/memes/manifest.json`, por ejemplo `["gato.png","jefe.jpg"]`.
 
 ## Armas
-Hay armas en el suelo (se recogen caminando encima; las ves por el rayo de luz y en el minimapa): **1 bazuca** en todo el mapa y 8 más (5 revólveres y 3 escopetas). Clic izquierdo para disparar. Revólver y escopeta aturden al nextbot unos segundos; la bazuca explota y destierra a los nextbots cercanos lejos de ti.
+Hay armas en el suelo (se recogen caminando encima; las ves por el rayo de luz y en el minimapa): **1 bazuca** en todo el mapa y 8 más (5 revólveres y 3 escopetas). Clic izquierdo para disparar. Tienes un **inventario de 3 slots** (teclas **1, 2, 3** o rueda del ratón; pulsar el mismo número guarda el arma): recoger otra arma la añade al siguiente slot, y recoger una que ya tienes **suma munición** (hasta 3 veces la carga original). Revólver y escopeta aturden al nextbot unos segundos; la bazuca explota y destierra a los nextbots cercanos lejos de ti.
 
 ## Menú principal
 El fondo del menú es una escena 3D en vivo: humanoides corriendo y nextbots persiguiéndolos, con un nextbot gigante al fondo. El entorno cambia según el mapa que elijas (hay un selector rápido de mapas bajo el botón INICIAR).
