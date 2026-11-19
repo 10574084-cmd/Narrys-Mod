@@ -8,7 +8,7 @@ El juego quedará en `https://10574084-cmd.github.io/Narrys-Mod/`.
 
 ## Características
 - Primera persona (teclado + ratón, y controles táctiles en móvil)
-- 5 mapas generados proceduralmente: Backrooms, Almacén, Mansión Abandonada, Ciudad Nocturna, Bosque Maldito
+- 12 mapas generados proceduralmente: Backrooms, Almacén, Mansión, Ciudad Nocturna, Bosque, Llanura Plana, Zona de Construcción, Gran Ciudad (Día), Isla Tropical, Minas Profundas, Búnker Militar y Laberinto de Setos
 - Hasta **30 jugadores CPU** con IA (pathfinding A*, huyen de los nextbots) y **100 nombres aleatorios** (`js/names.js`)
 - Nextbots con caras meme (incluidas) y **tus propias imágenes** (botón "Subir imágenes" o carpeta `images/memes/` + `manifest.json`)
 - Modelos humanoides 3D articulados, linterna, sombras, niebla, sonido procedural

@@ -253,7 +253,7 @@ export class Game {
 
     // luz de la luna (exteriores) con sombras que siguen al jugador
     if (!def.indoor) {
-      const moon = this.moon = new THREE.DirectionalLight(def.moon, 0.9);
+      const moon = this.moon = new THREE.DirectionalLight(def.moon, def.sunInt || 0.9);
       moon.castShadow = q.shadows;
       moon.shadow.mapSize.set(q.shSize, q.shSize);
       const s = moon.shadow.camera; s.left = -38; s.right = 38; s.top = 38; s.bottom = -38; s.near = 1; s.far = 140;

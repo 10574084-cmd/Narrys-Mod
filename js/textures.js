@@ -117,7 +117,7 @@ export const TEX = {
     }
     return tex(c, 2.5, 2.5);
   },
-  building(base = '#2b3038') {
+  building(base = '#2b3038', lit = 0.32) {
     const [c, x] = mk(256, 512);
     const [e, ex] = mk(256, 512);
     x.fillStyle = base; x.fillRect(0, 0, 256, 512);
@@ -126,16 +126,46 @@ export const TEX = {
     const cols = 2, rows = 4;
     for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
       const wx = 22 + k * 118, wy = 22 + r * 124, ww = 94, wh = 84;
-      const lit = Math.random() < 0.32;
-      x.fillStyle = lit ? '#e9c46a' : '#0b1018';
+      const isLit = Math.random() < lit;
+      x.fillStyle = isLit ? '#e9c46a' : '#0b1018';
       x.fillRect(wx, wy, ww, wh);
       x.strokeStyle = '#161a20'; x.lineWidth = 5; x.strokeRect(wx, wy, ww, wh);
       x.beginPath(); x.moveTo(wx + ww / 2, wy); x.lineTo(wx + ww / 2, wy + wh); x.stroke();
-      if (lit) { ex.fillStyle = 'rgba(233,196,106,0.9)'; ex.fillRect(wx, wy, ww, wh); }
+      if (isLit) { ex.fillStyle = 'rgba(233,196,106,0.9)'; ex.fillRect(wx, wy, ww, wh); }
     }
     const t = tex(c, 2.5, 5);
     const et = tex(e, 2.5, 5);
     t.userData.emissive = et;
     return t;
+  },
+  sand(base = '#d8c58a') {
+    const [c, x] = mk();
+    x.fillStyle = base; x.fillRect(0, 0, 256, 256);
+    speckle(x, 256, 256, 7000, 0.18);
+    speckle(x, 256, 256, 4000, 0.2, '255,255,255');
+    x.strokeStyle = 'rgba(120,90,40,0.12)'; x.lineWidth = 2;
+    for (let i = 0; i < 8; i++) { x.beginPath(); x.moveTo(0, rnd(0, 256)); x.bezierCurveTo(80, rnd(0, 256), 170, rnd(0, 256), 256, rnd(0, 256)); x.stroke(); }
+    return tex(c, 4, 4);
+  },
+  rock(base = '#4a4038') {
+    const [c, x] = mk();
+    x.fillStyle = base; x.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 40; i++) {
+      x.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,255,255'},${rnd(0.04, 0.14)})`;
+      x.beginPath(); const px = rnd(0, 256), py = rnd(0, 256);
+      x.moveTo(px, py); for (let k = 0; k < 5; k++) x.lineTo(px + rnd(-40, 40), py + rnd(-40, 40)); x.fill();
+    }
+    speckle(x, 256, 256, 6000, 0.25);
+    x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 2;
+    for (let i = 0; i < 6; i++) { x.beginPath(); let px = rnd(0, 256), py = rnd(0, 256); x.moveTo(px, py); for (let k = 0; k < 5; k++) { px += rnd(-30, 30); py += rnd(5, 30); x.lineTo(px, py); } x.stroke(); }
+    return tex(c, 2.5, 2.5);
+  },
+  water(base = '#1f6fa8') {
+    const [c, x] = mk();
+    x.fillStyle = base; x.fillRect(0, 0, 256, 256);
+    x.strokeStyle = 'rgba(255,255,255,0.18)'; x.lineWidth = 3;
+    for (let y = 10; y < 256; y += 22) { x.beginPath(); x.moveTo(0, y); for (let px = 0; px <= 256; px += 32) x.quadraticCurveTo(px + 16, y + rnd(-8, 8), px + 32, y); x.stroke(); }
+    speckle(x, 256, 256, 1500, 0.1, '255,255,255');
+    return tex(c, 2.5, 2.5);
   },
 };

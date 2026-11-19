@@ -86,6 +86,21 @@ function indoorLamps(c, chance) {
   }
 }
 
+
+// farolas/postes con luz (solo exteriores con lámpara activa)
+function postLamps(c, mod, h = 5) {
+  if (!c.def.lamp.int) return;
+  for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
+    if (c.g[I(x, z)] !== 0 || !neighborsWall(c, x, z) || (x * 31 + z * 17) % mod !== 0) continue;
+    const wx = (x + 0.5) * CELL, wz = (z + 0.5) * CELL;
+    c.lamps.push({ x: wx, z: wz, y: h });
+    c.props.push({ x: wx, z: wz, rot: 0, parts: [part('cyl', 0, h / 2, 0, 0.14, h, 0.14, 0x2a2d33), part('sphere', 0, h + 0.1, 0, 0.5, 0.5, 0.5, c.def.lamp.color, true)] });
+  }
+}
+const tree = (s, dark) => [
+  part('cyl', 0, 1.2, 0, 0.55, 2.4, 0.55, 0x3d2a1a),
+  part('cone', 0, 3.4, 0, 2.8 * s, 3.4 * s, 2.8 * s, dark ? 0x12351f : 0x1b4a26), part('cone', 0, 5, 0, 2 * s, 2.6 * s, 2 * s, dark ? 0x174326 : 0x225a2e)];
+
 /* ---------------------------- BACKROOMS ---------------------------- */
 function genBackrooms(def, rng) {
   const c = ctxNew(def, rng); c.g.fill(1);
@@ -113,12 +128,12 @@ function genBackrooms(def, rng) {
     const x0 = 2 + Math.floor(rng() * (N - w - 4)), z0 = 2 + Math.floor(rng() * (N - h - 4));
     for (let z = z0; z < z0 + h; z++) for (let x = x0; x < x0 + w; x++) c.g[I(x, z)] = 0;
     for (let z = z0 + 1; z < z0 + h - 1; z += 3) for (let x = x0 + 1; x < x0 + w - 1; x += 3) {
-      if (rng() < 0.75) addProp(c, x, z, { hx: 0.6, hz: 0.6, parts: [box(0, def.wallH / 2, 0, 1.2, def.wallH, 1.2, 0xcdbb5e)] });
+      if (rng() < 0.75) addProp(c, x, z, { hx: 0.6, hz: 0.6, parts: [box(0, def.wallH / 2, 0, 1.2, def.wallH, 1.2, def.pillar || 0xcdbb5e)] });
     }
   }
   border(c);
   const free = keepLargest(c);
-  indoorLamps(c, 0.85);
+  if (def.indoor) indoorLamps(c, 0.85); else postLamps(c, 13);
   return { c, free };
 }
 
@@ -191,7 +206,7 @@ function genMansion(def, rng) {
   };
   split(1, 1, N - 2, N - 2);
   for (const [x, z, t] of doors) { c.g[I(x, z)] = 0; if (t === 'v') c.g[I(x, z + 1)] = 0; else c.g[I(x + 1, z)] = 0; }
-  const cols = [0x5a3a24, 0x3b2a22, 0x6e2b2b, 0x2f3e4f, 0x4a4a3a];
+  const cols = def.cols || [0x5a3a24, 0x3b2a22, 0x6e2b2b, 0x2f3e4f, 0x4a4a3a];
   for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
     if (c.g[I(x, z)] !== 0 || !neighborsWall(c, x, z) || rng() > 0.09) continue;
     if (doors.some(([dx, dz]) => Math.abs(dx - x) < 3 && Math.abs(dz - z) < 3)) continue;
@@ -297,6 +312,121 @@ function genForest(def, rng) {
   return { c, free };
 }
 
+
+/* ---------------------------- LLANURA PLANA ---------------------------- */
+function genFlat(def, rng) {
+  const c = ctxNew(def, rng); border(c, 3);
+  for (let k = 0; k < 28; k++) {
+    const x = 2 + Math.floor(rng() * (N - 4)), z = 2 + Math.floor(rng() * (N - 4));
+    if (c.g[I(x, z)] !== 0) continue;
+    const s = 1.2 + rng() * 0.9;
+    addProp(c, x, z, { hx: s / 2, hz: s / 2, rot: rng() * 3, parts: [box(0, s / 2, 0, s, s, s, 0x9b7a4a), box(0, s + 0.3, 0, s * 0.6, 0.6, s * 0.6, 0x86683f)] });
+  }
+  for (let k = 0; k < 9; k++) { // bloques de piedra
+    const x = 3 + Math.floor(rng() * (N - 7)), z = 3 + Math.floor(rng() * (N - 7));
+    if ([0, 1].every(a => [0, 1].every(b => c.g[I(x + a, z + b)] === 0))) wallRect(c, x, z, x + 2, z + 2, 3 + rng() * 3);
+  }
+  for (let k = 0; k < 14; k++) {
+    const x = 2 + Math.floor(rng() * (N - 4)), z = 2 + Math.floor(rng() * (N - 4));
+    if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 0.45, hz: 0.45, parts: tree(0.8 + rng() * 0.5, false) });
+  }
+  const free = keepLargest(c);
+  return { c, free };
+}
+
+/* ---------------------------- ZONA DE CONSTRUCCIÓN ---------------------------- */
+function genConstruction(def, rng) {
+  const c = ctxNew(def, rng); border(c, 4); const rooms = [];
+  for (let k = 0; k < 40 && rooms.length < 12; k++) {
+    const w = 5 + Math.floor(rng() * 5), h = 5 + Math.floor(rng() * 5);
+    const x0 = 2 + Math.floor(rng() * (N - w - 4)), z0 = 2 + Math.floor(rng() * (N - h - 4));
+    if (rooms.some(r => x0 < r.x1 + 3 && x0 + w > r.x0 - 3 && z0 < r.z1 + 3 && z0 + h > r.z0 - 3)) continue;
+    rooms.push({ x0, z0, x1: x0 + w, z1: z0 + h });
+    const hh = 4 + rng() * 5;
+    for (let x = x0; x < x0 + w; x++) for (const z of [z0, z0 + h - 1]) { c.g[I(x, z)] = 1; c.hgt[I(x, z)] = hh; }
+    for (let z = z0; z < z0 + h; z++) for (const x of [x0, x0 + w - 1]) { c.g[I(x, z)] = 1; c.hgt[I(x, z)] = hh; }
+    const side = Math.floor(rng() * 4);
+    for (let d = 0; d < 2; d++) {
+      if (side === 0) c.g[I(x0 + 2 + d, z0)] = 0; else if (side === 1) c.g[I(x0 + 2 + d, z0 + h - 1)] = 0;
+      else if (side === 2) c.g[I(x0, z0 + 2 + d)] = 0; else c.g[I(x0 + w - 1, z0 + 2 + d)] = 0;
+    }
+  }
+  const cols = [0xb23a2e, 0x2e5fb2, 0xd9a227, 0x2f8f5a, 0x6b6f76];
+  for (let k = 0; k < 50; k++) { // contenedores (2 celdas)
+    const x = 1 + Math.floor(rng() * (N - 3)), z = 1 + Math.floor(rng() * (N - 2));
+    if (c.g[I(x, z)] !== 0 || c.g[I(x + 1, z)] !== 0) continue;
+    const col = cols[Math.floor(rng() * cols.length)];
+    c.g[I(x, z)] = 2; c.g[I(x + 1, z)] = 2;
+    for (const px of [x, x + 1]) { c.hx[I(px, z)] = 1.25; c.hz[I(px, z)] = 1.1; }
+    c.props.push({ x: (x + 1) * CELL, z: (z + 0.5) * CELL, rot: 0, parts: [box(0, 1.3, 0, 4.9, 2.6, 2.2, col), box(0, 2.62, 0, 4.9, 0.06, 2.2, 0x222222), box(0, 1.3, 1.11, 4.5, 2.2, 0.04, 0x00000, false)] });
+  }
+  for (let k = 0; k < 30; k++) { // barriles
+    const x = 1 + Math.floor(rng() * (N - 2)), z = 1 + Math.floor(rng() * (N - 2));
+    if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 0.45, hz: 0.45, parts: [part('cyl', 0, 0.55, 0, 0.9, 1.1, 0.9, rng() < 0.5 ? 0xb03a2e : 0x2e6fb0)] });
+  }
+  const free = keepLargest(c);
+  postLamps(c, 17);
+  return { c, free };
+}
+
+/* ---------------------------- ISLA TROPICAL ---------------------------- */
+function genIsland(def, rng) {
+  const c = ctxNew(def, rng); const mid = N / 2, R = N / 2 - 3.5;
+  for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) {
+    if (Math.hypot(x + 0.5 - mid, z + 0.5 - mid) + rng() * 1.5 > R) { c.g[I(x, z)] = 1; c.hgt[I(x, z)] = def.wallH; }
+  }
+  border(c, def.wallH);
+  for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
+    if (c.g[I(x, z)] !== 0) continue;
+    const r = rng();
+    if (r < 0.07) {
+      const s = 0.85 + rng() * 0.4;
+      addProp(c, x, z, { hx: 0.35, hz: 0.35, rot: rng() * 6, parts: [
+        part('cyl', 0, 2.2, 0, 0.35, 4.4, 0.35, 0x8a6a3a),
+        part('sphere', 0, 4.5, 0, 3.4 * s, 0.7, 3.4 * s, 0x2f8f3a), part('sphere', 0.3, 4.8, 0.2, 2.2 * s, 0.6, 2.2 * s, 0x3aa047)] });
+    } else if (r < 0.085) {
+      const s = 0.8 + rng() * 0.8;
+      addProp(c, x, z, { hx: 0.6 * s, hz: 0.6 * s, parts: [part('sphere', 0, 0.4 * s, 0, 1.7 * s, 1.1 * s, 1.4 * s, 0x8a8f96)] });
+    }
+  }
+  const free = keepLargest(c);
+  for (let k = 0; k < 14; k++) { // antorchas tiki
+    const i = free[Math.floor(rng() * free.length)], x = i % N, z = (i / N) | 0;
+    const wx = (x + 0.5) * CELL, wz = (z + 0.5) * CELL;
+    c.lamps.push({ x: wx, z: wz, y: 2.2 });
+    c.props.push({ x: wx, z: wz, rot: 0, parts: [part('cyl', 0, 1.1, 0, 0.1, 2.2, 0.1, 0x6b4a2a), part('sphere', 0, 2.3, 0, 0.34, 0.34, 0.34, 0xffa94d, true)] });
+  }
+  return { c, free };
+}
+
+/* ---------------------------- MINAS PROFUNDAS ---------------------------- */
+function genCave(def, rng) {
+  const c = ctxNew(def, rng);
+  let a = new Uint8Array(N * N);
+  for (let i = 0; i < N * N; i++) a[i] = rng() < 0.45 ? 1 : 0;
+  for (let it = 0; it < 5; it++) {
+    const b = new Uint8Array(a);
+    for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
+      let n = 0; for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) n += a[I(x + dx, z + dz)];
+      b[I(x, z)] = n >= 5 ? 1 : 0;
+    }
+    a = b;
+  }
+  for (let i = 0; i < N * N; i++) c.g[i] = a[i];
+  border(c);
+  for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
+    if (c.g[I(x, z)] === 0 && rng() < 0.035) addProp(c, x, z, { hx: 0.4, hz: 0.4, parts: [part('cone', 0, 0.9, 0, 0.9, 1.8, 0.9, 0x5a5048)] });
+  }
+  const free = keepLargest(c);
+  for (let k = 0; k < 40; k++) { // cristales luminosos
+    const i = free[Math.floor(rng() * free.length)], x = i % N, z = (i / N) | 0;
+    const wx = (x + 0.5) * CELL, wz = (z + 0.5) * CELL;
+    c.lamps.push({ x: wx, z: wz, y: 1.3 });
+    c.props.push({ x: wx, z: wz, rot: 0, parts: [part('cone', 0, 0.6, 0, 0.5, 1.2, 0.5, def.lamp.panel, true), part('cone', 0.25, 0.35, 0.1, 0.3, 0.7, 0.3, def.lamp.panel, true)] });
+  }
+  return { c, free };
+}
+
 /* ---------------------------- DEFINICIONES ---------------------------- */
 export const MAP_DEFS = [
   { id: 'backrooms', name: 'Backrooms', icon: '🟨', desc: 'Laberinto infinito de oficinas amarillas. Las luces zumban...',
@@ -319,6 +449,34 @@ export const MAP_DEFS = [
     indoor: false, wallH: 5, sky: 0x050a10, fog: [0x07120e, 0.045], hemi: [0x5f8f78, 0x0c1410, 0.9],
     tex: { wall: ['hedge', '#12301a'], floor: ['grass', '#1f3a1c'] },
     lamp: { color: 0xffa94d, int: 55, dist: 22 }, moon: 0x6f93c8, flicker: 0.6, drone: 38, gen: genForest },
+  { id: 'flat', name: 'Llanura Plana', icon: '🟩', desc: 'Campo abierto de día sin dónde esconderse. Corre lejos y rápido.',
+    indoor: false, wallH: 3, sky: 0x8fc4ff, fog: [0xa8d0f0, 0.008], hemi: [0xcfe6ff, 0x5a7a4a, 1.3],
+    tex: { wall: ['hedge', '#2f5f2a'], floor: ['grass', '#3f7a34'] },
+    lamp: { color: 0xffffff, int: 0, dist: 10 }, moon: 0xfff2d6, sunInt: 2.4, flicker: 0, drone: 45, gen: genFlat },
+  { id: 'construction', name: 'Zona de Construcción', icon: '🏗️', desc: 'Contenedores, barriles y edificios a medio hacer con luces de obra.',
+    indoor: false, wallH: 6, sky: 0x9aa7b4, fog: [0xa9b3bd, 0.012], hemi: [0xdfe6ee, 0x555a60, 1.2],
+    tex: { wall: ['concrete', '#8d9096'], floor: ['concrete', '#6a6d72'] },
+    lamp: { color: 0xffe2a8, int: 40, dist: 22 }, moon: 0xfff0d0, sunInt: 1.8, flicker: 0.1, drone: 52, gen: genConstruction },
+  { id: 'cityday', name: 'Gran Ciudad (Día)', icon: '🏙️', desc: 'Rascacielos y calles anchas a plena luz del día.',
+    indoor: false, wallH: 10, sky: 0x9fd0ff, fog: [0xb7d6f0, 0.01], hemi: [0xdceaff, 0x4a4d55, 1.3],
+    tex: { wall: ['building', '#6f7782', 0.03], floor: ['asphalt', '#3b3d42'] },
+    lamp: { color: 0xffe2a8, int: 0, dist: 20 }, moon: 0xfff6e0, sunInt: 2.6, flicker: 0, drone: 58, gen: genCity },
+  { id: 'island', name: 'Isla Tropical', icon: '🏝️', desc: 'Palmeras, rocas y antorchas rodeadas de mar.',
+    indoor: false, wallH: 1.6, sky: 0x7ec8ff, fog: [0x9fdcff, 0.008], hemi: [0xd8f0ff, 0xe0c890, 1.2],
+    tex: { wall: ['water', '#1f6fa8'], floor: ['sand', '#d8c58a'] },
+    lamp: { color: 0xffa94d, int: 35, dist: 16 }, moon: 0xfff0d0, sunInt: 2.4, flicker: 0.4, drone: 44, gen: genIsland },
+  { id: 'cave', name: 'Minas Profundas', icon: '⛏️', desc: 'Cuevas estrechas iluminadas por cristales naranjas.',
+    indoor: true, wallH: 4.5, ceilH: 4.5, sky: 0x050404, fog: [0x0a0806, 0.06], hemi: [0xffc890, 0x1a1410, 0.7],
+    tex: { wall: ['rock', '#4a4038'], floor: ['rock', '#3a322c'], ceil: ['rock', '#2e2824'] },
+    lamp: { color: 0xff9a4d, int: 40, dist: 16, panel: 0xffa860 }, flicker: 0.3, drone: 36, gen: genCave },
+  { id: 'bunker', name: 'Búnker Militar', icon: '🪖', desc: 'Pasillos de hormigón, cajas de munición y luces verdes.',
+    indoor: true, wallH: 3, ceilH: 3, sky: 0x040605, fog: [0x080d0a, 0.05], hemi: [0xb8ffd0, 0x0c1410, 0.55],
+    tex: { wall: ['concrete', '#5a6258'], floor: ['metal', '#2d332e'], ceil: ['metal', '#252a26'] },
+    lamp: { color: 0x9dffb8, int: 24, dist: 16, panel: 0xc8ffd8 }, cols: [0x3a4a30, 0x4a5a3a, 0x2f3a2a, 0x555b50], flicker: 0.6, drone: 40, gen: genMansion },
+  { id: 'hedge', name: 'Laberinto de Setos', icon: '🌳', desc: 'Un jardín-laberinto al anochecer con estatuas y farolas.',
+    indoor: false, wallH: 3.4, sky: 0x2a1f3a, fog: [0x2a2038, 0.03], hemi: [0xb8a0d8, 0x20182a, 1.0],
+    tex: { wall: ['hedge', '#1c4a24'], floor: ['grass', '#27502a'] },
+    lamp: { color: 0xffd9a0, int: 55, dist: 18 }, moon: 0xc8a0ff, sunInt: 0.8, pillar: 0x7a7a82, flicker: 0.3, drone: 40, gen: genBackrooms },
 ];
 
 export function generateMap(def, seed) {
