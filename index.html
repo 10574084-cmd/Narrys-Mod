@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0c">
+  <title>Narry's Mod — Nextbots 3D</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="vignette"></div>
+
+  <!-- MENÚ PRINCIPAL -->
+  <div id="menu">
+    <div id="bgfaces"></div>
+    <div class="wrap">
+      <header>
+        <h1 class="glitch" data-text="NARRY'S MOD">NARRY'S MOD</h1>
+        <p class="sub">NEXTBOTS 3D · SOBREVIVE A LOS MEMES</p>
+      </header>
+
+      <div class="cols">
+        <section class="panel">
+          <h2>Mapa</h2>
+          <div id="maps" class="maps"></div>
+          <p id="mapDesc" class="hint"></p>
+        </section>
+
+        <section class="panel">
+          <h2>Partida</h2>
+          <label>Tu nombre <input id="pName" maxlength="16" value="Jugador"></label>
+          <label>Jugadores CPU <b id="vCpus"></b><input id="pCpus" type="range" min="0" max="30" value="20"></label>
+          <label>Nextbots <b id="vBots"></b><input id="pBots" type="range" min="1" max="10" value="3"></label>
+          <label>Dificultad
+            <select id="pDiff">
+              <option value="0">Fácil</option><option value="1" selected>Normal</option>
+              <option value="2">Difícil</option><option value="3">Pesadilla</option>
+            </select>
+          </label>
+          <label>Duración de la ronda
+            <select id="pDur">
+              <option value="120">2 minutos</option><option value="240" selected>4 minutos</option>
+              <option value="360">6 minutos</option><option value="600">10 minutos</option>
+            </select>
+          </label>
+
+          <h2>Gráficos</h2>
+          <label>Calidad
+            <select id="pQual">
+              <option value="low">Bajo (más FPS)</option>
+              <option value="med">Medio</option>
+              <option value="high">Alto</option>
+              <option value="rt">Raytracing (aprox.)</option>
+            </select>
+          </label>
+          <p class="hint" id="rtHint">Raytracing (aprox.): oclusión ambiental, reflejos de entorno y sombras suaves. No es path tracing real.</p>
+          <label>Campo de visión <b id="vFov"></b><input id="pFov" type="range" min="60" max="110" value="80"></label>
+          <label>Sensibilidad <b id="vSens"></b><input id="pSens" type="range" min="2" max="30" value="10"></label>
+
+          <h2>Memes</h2>
+          <div class="row">
+            <label class="btn small" for="pFile">＋ Subir imágenes</label>
+            <input id="pFile" type="file" accept="image/*" multiple hidden>
+            <button id="pClear" class="btn small ghost" type="button">Borrar mías</button>
+            <span id="memeCount" class="hint"></span>
+          </div>
+          <label class="check"><input id="pOnly" type="checkbox"> Usar solo mis imágenes</label>
+        </section>
+      </div>
+
+      <button id="play" class="play">JUGAR</button>
+
+      <footer>
+        <p><b>WASD</b> mover · <b>Shift</b> correr · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Esc</b> pausa</p>
+        <p class="hint">Sobrevive hasta que acabe el tiempo. Los nextbots persiguen al jugador más cercano y cada vez van más rápido.</p>
+      </footer>
+    </div>
+  </div>
+
+  <div id="loading" class="overlay hidden"><div><div class="spinner"></div><p id="loadText">Generando mapa…</p></div></div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hudTop"><span id="hudTime">4:00</span><span id="hudAlive">👥 0</span></div>
+    <div id="toast"></div>
+    <div id="feed"></div>
+    <canvas id="mini" width="150" height="150"></canvas>
+    <div id="staminaWrap"><div id="stamina"></div></div>
+    <div id="cross"></div>
+    <div id="board" class="hidden"></div>
+    <button id="pauseBtn" class="touchOnly">❚❚</button>
+    <div id="touch" class="touchOnly">
+      <div id="joy"><div id="knob"></div></div>
+      <button id="btnRun">CORRER</button>
+      <button id="btnLight">🔦</button>
+    </div>
+  </div>
+
+  <!-- SUSTO -->
+  <div id="scare" class="hidden"><img id="scareImg" alt=""></div>
+
+  <!-- PAUSA -->
+  <div id="pause" class="overlay hidden">
+    <div class="card">
+      <h2>PAUSA</h2>
+      <button id="resume" class="btn">Continuar</button>
+      <button id="toMenu1" class="btn ghost">Salir al menú</button>
+    </div>
+  </div>
+
+  <!-- FIN -->
+  <div id="over" class="hidden">
+    <div class="card">
+      <h2 id="overTitle"></h2>
+      <p id="overText"></p>
+      <div class="row">
+        <button id="retry" class="btn">Reintentar</button>
+        <button id="toMenu2" class="btn ghost">Menú</button>
+      </div>
+      <p class="hint" id="spectHint"></p>
+    </div>
+  </div>
+
+  <noscript><p style="color:#fff;padding:2rem">Este juego necesita JavaScript.</p></noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

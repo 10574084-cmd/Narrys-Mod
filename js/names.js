@@ -1,0 +1,23 @@
+// 100 nombres aleatorios para los jugadores controlados por la CPU
+export const CPU_NAMES = [
+  'Pablito_Pro', 'xX_Sombra_Xx', 'DonChancla', 'LaMonaLisa', 'ElPollo99',
+  'Narry_Fan', 'TacoLoco', 'ProGamer_SV', 'Chuy123', 'MatiasXD',
+  'Lunita_77', 'ElWero', 'Kevin_The_Boss', 'SrPanqueque', 'NoobMaster69',
+  'Camila_Gamer', 'ElCholo', 'Pixel_Pancho', 'Sofi_Uwu', 'Gatito_Ninja',
+  'TurboAndy', 'Yeyo_Loco', 'La_Bruja_Gamer', 'ElMasCapo', 'Dani_Zombie',
+  'PapaFrita', 'Mia_Bunny', 'Chepe_Pupusa', 'Cheems_Fan', 'ElMaicol',
+  'Tomi_Pro', 'Valen_Estrella', 'Ratoncito_Z', 'Fer_Latino', 'ElGuaco',
+  'Nacho_Libre', 'Hugo_Boss', 'Zoe_Ninja', 'Memito_Sad', 'Alex_Speedrun',
+  'DiegoRush', 'Marti_Cat', 'Samu_Gamer', 'Rafa_Epico', 'ElTioPepe',
+  'Lucho_Drift', 'Isa_Panda', 'Beto_Bomba', 'Santi_Max', 'Oso_Peludo',
+  'Emi_Rayo', 'TioRico_Sv', 'Cande_Star', 'Jota_Jota', 'Mauri_Frio',
+  'Carlitos_Win', 'Dulce_Pixel', 'El_Flaco', 'Gordo_Tryhard', 'Nico_Sigma',
+  'Lolo_Spooky', 'Anita_Run', 'Ivan_Glitch', 'Rulo_Master', 'Tefa_Magic',
+  'ElCuervo', 'Joaquin_Pro', 'Paco_Ninja', 'Rosita_Roja', 'ElGato_Seba',
+  'Maxi_Ultra', 'Pepe_Pecas', 'Nube_Gris', 'ChiliPepper', 'Gabo_Fantasma',
+  'Lalo_Landa', 'Sandy_Sandia', 'TioGamer_X', 'Coco_Loco', 'Bruno_Bit',
+  'Facu_Rapido', 'Mari_Mariposa', 'Tono_Turbo', 'Ele_Gamer', 'Kiko_Kaos',
+  'Vero_Vampira', 'Chucho_Speed', 'Raul_Rayo', 'Nadia_Neon', 'Oscar_Oso',
+  'Pau_Panda', 'Lupe_Lobo', 'Hector_Hack', 'Ximena_X', 'Dario_Dash',
+  'Yami_Yeti', 'Ruben_Run', 'ElPibe_Z', 'Karla_Kamikaze', 'Wicho_Wow',
+];
