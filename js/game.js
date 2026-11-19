@@ -444,7 +444,7 @@ export class Game {
     const moving = len > 0.05;
     const wantRun = (k.has('ShiftLeft') || k.has('ShiftRight') || this.sprintBtn || len > 0.95 && this.sprintBtn) && moving;
     let speed = 3.6;
-    if (wantRun && p.stamina > 0 && !p.tired) { speed = 6.4; p.stamina -= dt * 0.2; if (p.stamina <= 0) p.tired = true; }
+    if (wantRun && p.stamina > 0 && !p.tired) { speed = 8.4; p.stamina -= dt * 0.2; if (p.stamina <= 0) p.tired = true; }
     else { p.stamina = Math.min(1, p.stamina + dt * (moving ? 0.1 : 0.2)); if (p.tired && p.stamina > 0.3) p.tired = false; }
     const sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
     const dx = (-sn * f + cs * s) * speed * dt, dz = (-cs * f - sn * s) * speed * dt;
