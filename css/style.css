@@ -92,3 +92,14 @@ body.touch #mini { width: 96px; height: 96px; left: 56px; }
 #scare { position: fixed; inset: 0; z-index: 30; background: #000; display: flex; align-items: center; justify-content: center; }
 #scare img { width: min(100vw, 100vh); height: min(100vw, 100vh); object-fit: contain; animation: shake .08s infinite; filter: contrast(1.4) saturate(1.8); }
 @keyframes shake { 0% { transform: translate(6px, 4px) scale(1.15); } 25% { transform: translate(-8px, -3px) scale(1.2); } 50% { transform: translate(5px, -6px) scale(1.12); } 75% { transform: translate(-5px, 6px) scale(1.22); } 100% { transform: translate(7px, -2px) scale(1.15); } }
+
+#memeList { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin: 8px 0; max-height: 280px; overflow-y: auto; touch-action: pan-y; }
+.meme { position: relative; background: #121217; border: 1px solid #2b2b33; border-radius: 8px; padding: 6px; text-align: center; }
+.meme.on { border-color: var(--red); }
+.meme img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #000; }
+.meme span { display: block; font-size: .7rem; margin: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meme .cnt { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.meme .cnt button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: #2b2b33; color: #fff; font-weight: 800; cursor: pointer; }
+.meme .x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border: 0; border-radius: 50%; background: rgba(0,0,0,.7); color: #fff; font-size: 11px; cursor: pointer; }
+.meme .tag { position: absolute; top: 4px; left: 4px; font-size: .6rem; background: rgba(0,0,0,.7); padding: 1px 4px; border-radius: 4px; }
+body.drag #menu::after { content: "Suelta tus imágenes aquí"; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,42,61,.25); font: 900 2rem Impact, sans-serif; z-index: 50; pointer-events: none; }

@@ -131,52 +131,83 @@ export function makeMemeCanvas(id) {
   return c;
 }
 
-/* ---- imágenes del usuario (guardadas en el navegador) ---- */
-const KEY = 'narrysmod_memes_v1';
-export function loadUserMemes() {
-  try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+/* ---- media del usuario (PNG/JPG/WEBP/GIF/WEBM) guardada en IndexedDB ---- */
+const DB = 'narrysmod_media', ST = 'files';
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(ST, { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
 }
-function saveUserMemes(list) {
-  try { localStorage.setItem(KEY, JSON.stringify(list)); return true; } catch { return false; }
+async function tx(mode, fn) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const t = db.transaction(ST, mode); const req = fn(t.objectStore(ST));
+    t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error);
+  });
 }
-export function clearUserMemes() { try { localStorage.removeItem(KEY); } catch { /* nada */ } }
+export const listMedia = () => tx('readonly', s => s.getAll());
+export const removeMedia = id => tx('readwrite', s => s.delete(id));
+export const clearMedia = () => tx('readwrite', s => s.clear());
 
-export function addUserImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas'); c.width = c.height = 256;
-      const x = c.getContext('2d');
-      const k = Math.max(256 / img.width, 256 / img.height);
-      const w = img.width * k, h = img.height * k;
-      x.drawImage(img, (256 - w) / 2, (256 - h) / 2, w, h);
-      URL.revokeObjectURL(url);
-      const list = loadUserMemes();
-      list.push({ name: (file.name || 'Meme').replace(/\.[^.]+$/, '').slice(0, 24), data: c.toDataURL('image/jpeg', 0.85) });
-      while (list.length > 20) list.shift();
-      saveUserMemes(list) ? resolve(list.length) : reject(new Error('Almacenamiento lleno'));
+export function kindOf(file) {
+  const n = (file.name || '').toLowerCase(), t = file.type || '';
+  if (t.startsWith('video/') || /\.(webm|mp4)$/.test(n)) return 'video';
+  if (t === 'image/gif' || n.endsWith('.gif')) return 'gif';
+  if (t.startsWith('image/') || /\.(png|jpe?g|webp|avif)$/.test(n)) return 'image';
+  return null;
+}
+export async function addMedia(file) {
+  const kind = kindOf(file);
+  if (!kind) throw new Error('Formato no soportado (usa PNG, JPG, GIF o WEBM)');
+  await tx('readwrite', s => s.add({ name: (file.name || 'Meme').replace(/\.[^.]+$/, '').slice(0, 24), kind, blob: file }));
+}
+
+// miniatura y proporción de una imagen/gif/video
+function makeThumb(kind, blob) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(blob), c = document.createElement('canvas');
+    c.width = c.height = 96;
+    const fin = (el, w, h) => {
+      const x = c.getContext('2d'), k = Math.max(96 / w, 96 / h);
+      try { x.drawImage(el, (96 - w * k) / 2, (96 - h * k) / 2, w * k, h * k); } catch { /* nada */ }
+      URL.revokeObjectURL(url); resolve({ thumb: c.toDataURL('image/png'), aspect: (w / h) || 1 });
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Imagen inválida')); };
-    img.src = url;
+    if (kind === 'video') {
+      const v = document.createElement('video'); v.muted = true; v.preload = 'auto'; v.src = url;
+      v.onloadeddata = () => { v.currentTime = Math.min(0.1, (v.duration || 1) / 2); };
+      v.onseeked = () => fin(v, v.videoWidth || 96, v.videoHeight || 96);
+      v.onerror = () => { URL.revokeObjectURL(url); resolve({ thumb: '', aspect: 1 }); };
+    } else {
+      const i = new Image(); i.onload = () => fin(i, i.naturalWidth || 96, i.naturalHeight || 96);
+      i.onerror = () => { URL.revokeObjectURL(url); resolve({ thumb: '', aspect: 1 }); }; i.src = url;
+    }
   });
 }
 
-function loadImg(src) {
-  return new Promise(res => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
-}
-
-// Construye el pool final: [{name, source(canvas|img)}]
-export async function buildMemePool(onlyCustom) {
+// Pool completo: incluidos + tuyos (IndexedDB) + los de images/memes/manifest.json
+export async function buildMemePool() {
   const pool = [];
-  const custom = [];
-  for (const m of loadUserMemes()) { const i = await loadImg(m.data); if (i) custom.push({ name: m.name, source: i }); }
-  try { // imágenes del repo: images/memes/manifest.json = ["a.png","b.jpg"]
+  for (const k of MEME_KINDS) {
+    const canvas = makeMemeCanvas(k.id);
+    pool.push({ id: 'b_' + k.id, name: k.name, kind: 'canvas', canvas, thumb: canvas.toDataURL(), aspect: 1, builtin: true });
+  }
+  let mine = []; try { mine = await listMedia(); } catch { /* sin IndexedDB */ }
+  for (const m of mine) {
+    const { thumb, aspect } = await makeThumb(m.kind, m.blob);
+    pool.push({ id: 'u_' + m.id, dbId: m.id, name: m.name, kind: m.kind, blob: m.blob, thumb, aspect });
+  }
+  try { // images/memes/manifest.json = ["a.png","b.gif","c.webm"]
     const r = await fetch('images/memes/manifest.json', { cache: 'no-cache' });
-    if (r.ok) {
-      for (const f of await r.json()) { const i = await loadImg('images/memes/' + encodeURIComponent(f)); if (i) custom.push({ name: String(f).replace(/\.[^.]+$/, ''), source: i }); }
+    if (r.ok) for (const f of await r.json()) {
+      const rr = await fetch('images/memes/' + encodeURIComponent(f)).catch(() => null);
+      if (!rr || !rr.ok) continue;
+      const blob = await rr.blob(), kind = kindOf({ name: String(f), type: blob.type });
+      if (!kind) continue;
+      const { thumb, aspect } = await makeThumb(kind, blob);
+      pool.push({ id: 'r_' + f, name: String(f).replace(/\.[^.]+$/, ''), kind, blob, thumb, aspect });
     }
   } catch { /* sin manifest */ }
-  if (!(onlyCustom && custom.length)) for (const k of MEME_KINDS) pool.push({ name: k.name, source: makeMemeCanvas(k.id) });
-  return pool.concat(custom);
+  return pool;
 }

@@ -39,7 +39,7 @@
           <h2>Partida</h2>
           <label>Tu nombre <input id="pName" maxlength="16" value="Jugador"></label>
           <label>Jugadores CPU <b id="vCpus"></b><input id="pCpus" type="range" min="0" max="30" value="20"></label>
-          <label>Nextbots <b id="vBots"></b><input id="pBots" type="range" min="1" max="10" value="3"></label>
+          <label>Nextbots <b id="vBots"></b><input id="pBots" type="range" min="1" max="20" value="3"></label>
           <label>Dificultad
             <select id="pDiff">
               <option value="0">Fácil</option><option value="1" selected>Normal</option>
@@ -66,13 +66,14 @@
           <label>Campo de visión <b id="vFov"></b><input id="pFov" type="range" min="60" max="110" value="80"></label>
           <label>Sensibilidad <b id="vSens"></b><input id="pSens" type="range" min="2" max="30" value="10"></label>
 
-          <h2>Memes</h2>
+          <h2>Memes / imágenes de nextbots</h2>
           <div class="row">
-            <label class="btn small" for="pFile">＋ Subir imágenes</label>
-            <input id="pFile" type="file" accept="image/*" multiple hidden>
+            <label class="btn small" for="pFile">＋ Subir PNG / GIF / WEBM</label>
+            <input id="pFile" type="file" accept="image/*,video/webm,video/mp4,.gif,.webm" multiple hidden>
             <button id="pClear" class="btn small ghost" type="button">Borrar mías</button>
-            <span id="memeCount" class="hint"></span>
           </div>
+          <p class="hint">También puedes arrastrar archivos a esta pantalla. Con <b>+ / −</b> eliges cuántos nextbots de cada imagen; el resto se reparte al azar.</p>
+          <div id="memeList"></div>
           <label class="check"><input id="pOnly" type="checkbox"> Usar solo mis imágenes</label>
         </section>
       </div>

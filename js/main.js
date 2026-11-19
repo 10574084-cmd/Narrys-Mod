@@ -1,13 +1,13 @@
 // Menú principal, ajustes y conexión con el juego
 import { MAP_DEFS, generateMap, N } from './maps.js';
 import { Game, isTouch } from './game.js';
-import { MEME_KINDS, makeMemeCanvas, buildMemePool, addUserImage, loadUserMemes, clearUserMemes } from './memes.js';
+import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
 
 const $ = id => document.getElementById(id);
 if (isTouch) document.body.classList.add('touch');
 
 const KEY = 'narrysmod_cfg_v1';
-const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', fov: 80, sens: 10, name: 'Jugador', only: false },
+const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', fov: 80, sens: 10, name: 'Jugador', only: false, counts: {} },
   (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })());
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* nada */ } };
 
@@ -63,13 +63,37 @@ for (const [id, key, num] of [['pDiff', 'diff', true], ['pDur', 'dur', true], ['
 $('pOnly').checked = cfg.only; $('pOnly').onchange = e => { cfg.only = e.target.checked; save(); };
 function updHint() { $('rtHint').style.display = cfg.quality === 'rt' ? 'block' : 'none'; }
 updHint();
-function updMemeCount() { $('memeCount').textContent = `${loadUserMemes().length} imágenes tuyas + ${MEME_KINDS.length} incluidas`; }
-updMemeCount();
-$('pFile').onchange = async e => {
-  for (const f of e.target.files) { try { await addUserImage(f); } catch (err) { alert('No se pudo guardar "' + f.name + '": ' + err.message); } }
-  e.target.value = ''; updMemeCount();
-};
-$('pClear').onclick = () => { clearUserMemes(); updMemeCount(); };
+async function renderMemes() {
+  const list = $('memeList'); let pool = [];
+  try { pool = await buildMemePool(); } catch (e) { console.warn(e); }
+  list.innerHTML = '';
+  for (const e of pool) {
+    const n = cfg.counts[e.id] || 0, d = document.createElement('div');
+    d.className = 'meme' + (n ? ' on' : '');
+    d.innerHTML = `<img alt=""><span></span><div class="cnt"><button type="button">−</button><b>${n}</b><button type="button">+</button></div>`;
+    d.querySelector('img').src = e.thumb; d.querySelector('span').textContent = e.name; d.title = e.name;
+    if (e.kind === 'gif' || e.kind === 'video') { const t = document.createElement('i'); t.className = 'tag'; t.textContent = e.kind.toUpperCase(); d.appendChild(t); }
+    const [minus, plus] = d.querySelectorAll('button');
+    const set = v => { cfg.counts[e.id] = Math.max(0, Math.min(10, v)); save(); d.querySelector('b').textContent = cfg.counts[e.id]; d.classList.toggle('on', cfg.counts[e.id] > 0); };
+    minus.onclick = () => set((cfg.counts[e.id] || 0) - 1); plus.onclick = () => set((cfg.counts[e.id] || 0) + 1);
+    if (e.dbId != null) {
+      const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.type = 'button';
+      x.onclick = async () => { await removeMedia(e.dbId); delete cfg.counts[e.id]; save(); renderMemes(); };
+      d.appendChild(x);
+    }
+    list.appendChild(d);
+  }
+}
+async function addFiles(files) {
+  for (const f of files) { try { await addMedia(f); } catch (err) { alert('No se pudo guardar "' + f.name + '": ' + (err && err.message || err)); } }
+  renderMemes();
+}
+$('pFile').onchange = async e => { await addFiles([...e.target.files]); e.target.value = ''; };
+$('pClear').onclick = async () => { try { await clearMedia(); } catch { /* nada */ } cfg.counts = {}; save(); renderMemes(); };
+window.addEventListener('dragover', e => { if (!$('menu').classList.contains('hidden')) { e.preventDefault(); document.body.classList.add('drag'); } });
+window.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('drag'); });
+window.addEventListener('drop', e => { document.body.classList.remove('drag'); if (!$('menu').classList.contains('hidden')) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });
+renderMemes();
 selectMap(cfg.map);
 
 /* ---------- juego ---------- */
@@ -86,9 +110,16 @@ async function play() {
   game.sfx.init(MAP_DEFS[cfg.map].drone); // el clic cuenta como gesto para activar el audio
   await new Promise(r => setTimeout(r, 30));
   try {
-    const pool = await buildMemePool(cfg.only);
+    let pool = await buildMemePool();
+    if (cfg.only && pool.some(e => !e.builtin)) pool = pool.filter(e => !e.builtin);
+    const plan = [];
+    for (const e of pool) for (let k = 0; k < (cfg.counts[e.id] || 0); k++) plan.push(e);
+    const total = Math.min(20, Math.max(cfg.bots, plan.length));
+    plan.length = Math.min(plan.length, total);
+    while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
+    plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: cfg.bots, diff: cfg.diff, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, diff: cfg.diff, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));

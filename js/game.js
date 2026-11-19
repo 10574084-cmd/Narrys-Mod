@@ -128,7 +128,7 @@ export class Game {
     this.camera.fov = opts.fov; this.camera.updateProjectionMatrix();
     this.buildScene();
     await this.setupPost();
-    this.buildMemes(memePool);
+    await this.buildMemes(opts.plan);
     this.spawnEntities();
     this.buildMini();
     this.sfx.init(def.drone);
@@ -154,6 +154,8 @@ export class Game {
       });
       if (this.scene.environment) this.scene.environment.dispose();
     }
+    if (this.memes) { for (const m of this.memes.values()) { if (m.dispose) m.dispose(); if (m.tex) m.tex.dispose(); } this.memes = null; }
+    this.animated = [];
     this.scene = null; this.cpus = []; this.bots = []; this.flash = null;
     this.keys.clear(); this.joy.x = this.joy.y = 0;
     this.renderer.renderLists.dispose();
@@ -313,12 +315,41 @@ export class Game {
     }
   }
 
-  buildMemes(pool) {
-    this.memes = pool.map(m => {
-      const t = m.source instanceof HTMLCanvasElement ? new THREE.CanvasTexture(m.source) : new THREE.Texture(m.source);
-      t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; t.anisotropy = 4;
-      return { name: m.name, tex: t, source: m.source };
-    });
+  async buildMemes(plan) {
+    this.memes = new Map(); this.animated = [];
+    for (const e of plan) {
+      if (this.memes.has(e.id)) continue;
+      const m = { name: e.name, aspect: e.aspect || 1, scare: e.thumb, update: null, dispose: null, tex: null };
+      try {
+        if (e.kind === 'canvas') { m.tex = new THREE.CanvasTexture(e.canvas); m.scare = e.canvas.toDataURL(); }
+        else {
+          const url = URL.createObjectURL(e.blob);
+          if (e.kind === 'video') {
+            const v = document.createElement('video');
+            v.loop = true; v.muted = true; v.playsInline = true; v.src = url;
+            await new Promise(r => { v.onloadeddata = r; v.onerror = r; setTimeout(r, 4000); });
+            v.play().catch(() => {});
+            m.tex = new THREE.VideoTexture(v); m.aspect = (v.videoWidth / v.videoHeight) || 1;
+            m.dispose = () => { v.pause(); v.removeAttribute('src'); v.load(); URL.revokeObjectURL(url); };
+          } else {
+            const img = new Image(); img.src = url; await img.decode().catch(() => {});
+            m.aspect = (img.naturalWidth / img.naturalHeight) || 1; m.scare = url;
+            if (e.kind === 'gif') { // el <img> en el DOM sigue animándose; se copia a un canvas cada ~50 ms
+              img.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
+              document.body.appendChild(img);
+              const k = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight, 1));
+              const c = document.createElement('canvas'); c.width = Math.max(2, Math.round(img.naturalWidth * k)); c.height = Math.max(2, Math.round(img.naturalHeight * k));
+              const x = c.getContext('2d'); m.tex = new THREE.CanvasTexture(c);
+              m.update = () => { x.clearRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height); m.tex.needsUpdate = true; };
+              m.update(); this.animated.push(m);
+              m.dispose = () => { img.remove(); URL.revokeObjectURL(url); };
+            } else { m.tex = new THREE.Texture(img); m.tex.needsUpdate = true; m.dispose = () => URL.revokeObjectURL(url); }
+          }
+        }
+      } catch (err) { console.warn('Meme no cargado', e.name, err); m.tex = new THREE.Texture(); }
+      m.tex.colorSpace = THREE.SRGBColorSpace; m.tex.anisotropy = 4;
+      this.memes.set(e.id, m);
+    }
     this.haloTex = haloTexture();
   }
 
@@ -353,13 +384,13 @@ export class Game {
     this.bots = [];
     const grace = 10, gap = 7;
     for (let i = 0; i < o.bots; i++) {
-      const meme = this.memes[(i + Math.floor(Math.random() * this.memes.length)) % this.memes.length];
+      const meme = this.memes.get(o.plan[i % o.plan.length].id);
       const mat = new THREE.MeshBasicMaterial({ map: meme.tex, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, fog: false });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 2.5), mat); mesh.visible = false;
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); mesh.visible = false;
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.haloTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.8 }));
       halo.scale.set(5.2, 5.2, 1); halo.visible = false;
       this.scene.add(mesh, halo);
-      this.bots.push({ type: 'bot', name: meme.name, meme, x: 0, z: 0, r: 0.55, active: false, spawnAt: grace + i * gap, mesh, halo,
+      this.bots.push({ type: 'bot', name: meme.name, meme, bw: Math.min(4.2, Math.max(1.2, 2.5 * meme.aspect)), x: 0, z: 0, r: 0.55, active: false, spawnAt: grace + i * gap, mesh, halo,
         target: null, retarget: 0, path: null, pi: 0, repath: 0, lx: 0, lz: 0, stuckT: 0, phase: Math.random() * 6 });
     }
   }
@@ -555,7 +586,7 @@ export class Game {
       this.feed(`💀 Te atrapó ${bot.name}`, true);
       this.state = 'dead'; this.killer = bot; this.place = left;
       this.sfx.scare(); this.sfx.setThreat(0);
-      const img = $('scareImg'); img.src = bot.meme.source.src || bot.meme.source.toDataURL();
+      const img = $('scareImg'); img.src = bot.meme.scare;
       $('scare').classList.remove('hidden'); $('vignette').style.opacity = 0; this.showBoard(false);
       this.specIdx = 0;
       setTimeout(() => {
@@ -601,6 +632,8 @@ export class Game {
       if (c.alive) { c.model.position.y = 0; c.model.rotation.y = c.yaw; animateHumanoid(c.model, dt, c.spd, false); }
       if (c.alive) { const d = Math.hypot(c.x - cam.position.x, c.z - cam.position.z); c.tag.visible = d < 26; }
     }
+    const nowMs = performance.now();
+    for (const m of this.animated || []) if (nowMs - (m.last || 0) > 50) { m.last = nowMs; m.update(); }
     // nextbots
     let nearest = 1e9; const act = [];
     for (const b of this.bots) {
@@ -609,7 +642,7 @@ export class Game {
       const ang = Math.atan2(cam.position.x - b.x, cam.position.z - b.z);
       const sc = 1 + Math.sin(b.phase * 1.3) * 0.05;
       b.mesh.position.set(b.x, 1.45 + Math.sin(b.phase) * 0.08, b.z);
-      b.mesh.rotation.set(0, ang, Math.sin(b.phase * 0.7) * 0.06); b.mesh.scale.set(sc, sc, 1);
+      b.mesh.rotation.set(0, ang, Math.sin(b.phase * 0.7) * 0.06); b.mesh.scale.set(b.bw * sc, 2.5 * sc, 1);
       const dir = new THREE.Vector3(b.x - cam.position.x, 0, b.z - cam.position.z).normalize().multiplyScalar(0.12);
       b.halo.position.set(b.x + dir.x, 1.45, b.z + dir.z);
       const d = Math.hypot(b.x - p.x, b.z - p.z);
