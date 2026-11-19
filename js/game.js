@@ -30,6 +30,36 @@ function haloTexture() {
   return new THREE.CanvasTexture(c);
 }
 
+const WEAPONS = {
+  revolver: { name: 'REVÓLVER', ammo: 6, cd: 0.55, stun: 3.2, range: 60, tol: 1.15, grow: 0.0, beam: 0xffd24d },
+  shotgun:  { name: 'ESCOPETA', ammo: 4, cd: 0.95, stun: 4.5, range: 28, tol: 1.2, grow: 0.14, beam: 0x6bd8ff },
+  bazooka:  { name: 'BAZUCA', ammo: 2, cd: 1.3, stun: 7, range: 90, tol: 1.3, grow: 0.0, beam: 0xff5a2a, blast: 9 },
+};
+
+function weaponModel(type) {
+  const g = new THREE.Group();
+  const M = (c, r = 0.45, m = 0.7) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
+  const steel = M(0x8b9096), dark = M(0x23262b, 0.5, 0.6), wood = M(0x6b4423, 0.8, 0.05), olive = M(0x4f5d3a, 0.7, 0.3);
+  const box = (w, h, d, x, y, z, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); return o; };
+  const cyl = (r, l, x, y, z, m, seg = 14) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), m); o.rotation.x = Math.PI / 2; o.position.set(x, y, z); g.add(o); return o; };
+  if (type === 'revolver') {
+    cyl(0.017, 0.3, 0, 0.035, -0.15, steel); cyl(0.036, 0.07, 0, 0.0, -0.01, dark, 6);
+    box(0.04, 0.075, 0.12, 0, 0.0, 0.03, steel);
+    const grip = box(0.04, 0.12, 0.05, 0, -0.07, 0.085, wood); grip.rotation.x = -0.3;
+    box(0.012, 0.03, 0.012, 0, 0.082, -0.29, dark);
+  } else if (type === 'shotgun') {
+    cyl(0.02, 0.72, 0, 0.02, -0.36, steel); cyl(0.017, 0.62, 0, -0.012, -0.31, dark);
+    box(0.04, 0.045, 0.18, 0, -0.005, -0.22, wood);
+    box(0.045, 0.075, 0.2, 0, 0.0, 0.0, dark);
+    const st = box(0.045, 0.1, 0.3, 0, -0.03, 0.2, wood); st.rotation.x = 0.18;
+  } else {
+    cyl(0.07, 0.95, 0, 0.0, -0.4, olive, 18); cyl(0.088, 0.1, 0, 0, -0.9, dark, 18); cyl(0.088, 0.1, 0, 0, 0.07, dark, 18);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 14), M(0xc23b22, 0.5, 0.2)); cone.rotation.x = -Math.PI / 2; cone.position.set(0, 0, -1.05); g.add(cone);
+    box(0.04, 0.12, 0.05, 0, -0.1, -0.35, dark); box(0.025, 0.05, 0.08, 0, 0.09, -0.5, dark);
+  }
+  return g;
+}
+
 export class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -101,6 +131,8 @@ export class Game {
     $('btnRun').addEventListener('pointerleave', () => { this.sprintBtn = false; });
     $('btnLight').addEventListener('pointerdown', () => { if (this.flash) this.flash.visible = !this.flash.visible; });
     $('btnJump').addEventListener('pointerdown', () => { this.jumpReq = true; });
+    $('btnFire').addEventListener('pointerdown', () => { this.fireReq = true; });
+    document.addEventListener('mousedown', e => { if (e.button === 0 && document.pointerLockElement === this.canvas && this.state === 'playing') this.fireReq = true; });
     $('pauseBtn').addEventListener('click', () => this.onEvent('pause'));
     this.canvas.addEventListener('click', () => { if (this.state === 'dead') this.cycleSpectate(); });
   }
@@ -158,6 +190,8 @@ export class Game {
     }
     if (this.memes) { for (const m of this.memes.values()) { if (m.dispose) m.dispose(); if (m.tex) m.tex.dispose(); } this.memes = null; }
     this.animated = [];
+    for (const o of [this.flash, this.flash && this.flash.target, this.muzzle, this.fpModel]) if (o) this.camera.remove(o);
+    this.muzzle = null; this.fpModel = null; this.weapon = null; this.pickups = []; this.fx = [];
     this.scene = null; this.cpus = []; this.bots = []; this.flash = null;
     this.keys.clear(); this.joy.x = this.joy.y = 0;
     this.renderer.renderLists.dispose();
@@ -280,6 +314,7 @@ export class Game {
     flash.shadow.mapSize.set(q.shSize / 2, q.shSize / 2); flash.shadow.bias = -0.0005; flash.shadow.camera.near = 0.3; flash.shadow.camera.far = 50;
     flash.target.position.set(0, 0, -6);
     this.camera.add(flash, flash.target);
+    this.muzzle = new THREE.PointLight(0xffb060, 0, 14, 2); this.muzzle.position.set(0.2, -0.1, -0.7); this.camera.add(this.muzzle);
   }
 
   async setupPost() {
@@ -372,6 +407,7 @@ export class Game {
     const pw = W.cellWorld(pick());
     this.player = { type: 'player', name: o.name || 'Jugador', x: pw.x, z: pw.z, r: 0.35, alive: true, stamina: 1, tired: false, bob: 0, y: 0, vy: 0 };
     this.yaw = Math.random() * Math.PI * 2; this.pitch = 0;
+    this.spawnPickups(pick, pw);
 
     const names = CPU_NAMES.slice().sort(() => Math.random() - 0.5).slice(0, o.cpus);
     this.cpus = [];
@@ -407,6 +443,140 @@ export class Game {
     }
   }
 
+  // 1 bazuca en todo el mapa + 8 armas más (5 revólveres y 3 escopetas)
+  spawnPickups(pick, pw) {
+    const W = this.world;
+    this.weapon = null; this.pickups = []; this.fx = [];
+    const list = ['bazooka', 'revolver', 'revolver', 'revolver', 'revolver', 'revolver', 'shotgun', 'shotgun', 'shotgun'];
+    for (const type of list) {
+      let spot = null;
+      for (let t = 0; t < 80 && !spot; t++) {
+        const c = W.cellWorld(pick());
+        const minP = type === 'bazooka' ? 22 : 7;
+        if (Math.hypot(c.x - pw.x, c.z - pw.z) < minP) continue;
+        if (this.pickups.some(p => Math.hypot(p.x - c.x, p.z - c.z) < 8)) continue;
+        spot = c;
+      }
+      if (!spot) spot = W.cellWorld(pick());
+      const def = WEAPONS[type], mesh = new THREE.Group();
+      const model = weaponModel(type); model.scale.setScalar(type === 'revolver' ? 3 : 1.7); model.position.y = 1.0; mesh.add(model);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 8, 1, true), new THREE.MeshBasicMaterial({ color: def.beam, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+      beam.position.y = 2.6; mesh.add(beam);
+      mesh.position.set(spot.x, 0, spot.z); this.scene.add(mesh);
+      this.pickups.push({ type, x: spot.x, z: spot.z, mesh, model, taken: false, ph: Math.random() * 6 });
+    }
+  }
+
+  giveWeapon(type) {
+    const def = WEAPONS[type];
+    this.weapon = { type, ammo: def.ammo, cd: 0.4 };
+    if (this.fpModel) this.camera.remove(this.fpModel);
+    const m = this.fpModel = weaponModel(type);
+    m.traverse(o => { if (o.isMesh) { o.material.depthTest = false; o.renderOrder = 999; o.material.metalness = 0.15; o.material.color.multiplyScalar(0.3); } });
+    this.fpBase = type === 'bazooka' ? new THREE.Vector3(0.2, -0.2, -0.45) : type === 'shotgun' ? new THREE.Vector3(0.2, -0.17, -0.35) : new THREE.Vector3(0.18, -0.15, -0.35);
+    m.position.copy(this.fpBase); m.rotation.y = 0.05;
+    this.camera.add(m);
+    this.toast(`Recogiste: ${def.name} (${def.ammo} ${type === 'bazooka' ? 'cohetes' : 'balas'})`, 2200);
+    this.feed(`🔫 Conseguiste ${def.name}`, true);
+    this.sfx.thud(0.2);
+  }
+
+  fire() {
+    const w = this.weapon, def = w && WEAPONS[w.type], p = this.player, cam = this.camera;
+    if (!w || !p.alive || w.cd > 0 || w.ammo <= 0) return;
+    w.ammo--; w.cd = def.cd; this.recoil = 1;
+    const d = cam.getWorldDirection(this._wd || (this._wd = new THREE.Vector3()));
+    // impacto contra nextbots (la mira se tolera según el arma)
+    let best = null, bt = def.range;
+    for (const b of this.bots) {
+      if (!b.active) continue;
+      const vx = b.x - cam.position.x, vy = 1.45 - cam.position.y, vz = b.z - cam.position.z;
+      const t = vx * d.x + vy * d.y + vz * d.z;
+      if (t < 0 || t > def.range) continue;
+      const dist = Math.hypot(vx - d.x * t, vy - d.y * t, vz - d.z * t);
+      if (dist > def.tol + def.grow * t) continue;
+      if (!this.world.los(p.x, p.z, b.x, b.z, 0.1)) continue;
+      if (t < bt) { bt = t; best = b; }
+    }
+    // distancia hasta la primera pared
+    let wt = def.range;
+    for (let t = 0.6; t < def.range; t += 0.5) {
+      const y = cam.position.y + d.y * t;
+      if (y < 0.05 || this.world.collides(cam.position.x + d.x * t, cam.position.z + d.z * t, 0.05)) { wt = t; break; }
+    }
+    const loud = w.type === 'bazooka';
+    this.sfx.burst(loud ? 0.5 : 0.18, loud ? 260 : 1400, loud ? 0.9 : 0.8, 0.7, loud ? 'lowpass' : 'bandpass');
+    this.muzzleT = 0.07;
+    if (loud) {
+      const t = Math.min(wt, bt);
+      this.explode(cam.position.x + d.x * t, Math.max(0.3, cam.position.y + d.y * t), cam.position.z + d.z * t, def);
+    } else if (best && bt <= wt) {
+      this.stunBot(best, def.stun);
+      this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200);
+    }
+    if (w.ammo <= 0) this.emptyT = 0.6;
+  }
+
+  stunBot(b, secs) { b.stun = secs; b.path = null; }
+
+  banish(b, secs) {
+    const free = this.map.free, W = this.world, P = this.player;
+    let best = null, bd = -1;
+    for (let k = 0; k < 30; k++) {
+      const c = W.cellWorld(free[Math.floor(Math.random() * free.length)]);
+      const d = Math.hypot(c.x - P.x, c.z - P.z);
+      if (d > bd) { bd = d; best = c; }
+    }
+    b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.path = null; b.stun = secs;
+  }
+
+  explode(x, y, z, def) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    const s = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), mat); s.position.set(x, y, z);
+    const L = new THREE.PointLight(0xff9040, 200, 40, 2); L.position.set(x, y + 0.5, z);
+    this.scene.add(s, L); this.fx.push({ s, L, t: 0 });
+    this.sfx.burst(1.3, 110, 1.0, 0.6, 'lowpass');
+    let hit = 0;
+    for (const b of this.bots) {
+      if (!b.active) continue;
+      if (Math.hypot(b.x - x, b.z - z) < def.blast) { this.banish(b, def.stun); hit++; this.feed(`💥 ${b.name} fue desterrado por la bazuca`, true); }
+    }
+    this.toast(hit ? `¡BOOM! ${hit} nextbot${hit > 1 ? 's' : ''} desterrado${hit > 1 ? 's' : ''}` : '¡BOOM!', 1500);
+  }
+
+  updateWeapons(dt) {
+    const p = this.player, w = this.weapon;
+    // recogida de armas
+    if (p.alive) for (const pk of this.pickups) {
+      if (pk.taken) continue;
+      if (Math.hypot(pk.x - p.x, pk.z - p.z) < 1.5) { pk.taken = true; pk.mesh.visible = false; this.giveWeapon(pk.type); }
+    }
+    for (const pk of this.pickups) if (!pk.taken) { pk.ph += dt * 2; pk.model.rotation.y += dt * 1.6; pk.model.position.y = 1.0 + Math.sin(pk.ph) * 0.12; }
+    // disparo
+    if (this.fireReq) { this.fireReq = false; if (w) this.fire(); }
+    if (w) {
+      w.cd = Math.max(0, w.cd - dt);
+      if (w.ammo <= 0 && this.emptyT !== undefined) {
+        this.emptyT -= dt;
+        if (this.emptyT <= 0) { this.emptyT = undefined; this.camera.remove(this.fpModel); this.fpModel = null; this.weapon = null; this.toast('Sin munición: arma descartada', 1400); }
+      }
+    }
+    if (this.fpModel) { // retroceso y vaivén del arma
+      this.recoil = Math.max(0, (this.recoil || 0) - dt * 6);
+      const bob = p.moving ? Math.sin(p.bob) * 0.008 : 0;
+      this.fpModel.position.set(this.fpBase.x, this.fpBase.y + bob - this.recoil * 0.02, this.fpBase.z + this.recoil * 0.12);
+      this.fpModel.rotation.x = this.recoil * 0.25;
+    }
+    if (this.muzzle) { this.muzzleT = Math.max(0, (this.muzzleT || 0) - dt); this.muzzle.intensity = this.muzzleT > 0 ? 40 : 0; }
+    // explosiones
+    for (let i = this.fx.length - 1; i >= 0; i--) {
+      const f = this.fx[i]; f.t += dt;
+      const k = f.t / 0.5;
+      f.s.scale.setScalar(0.5 + k * 8); f.s.material.opacity = Math.max(0, 0.9 * (1 - k)); f.L.intensity = Math.max(0, 200 * (1 - k));
+      if (k >= 1) { this.scene.remove(f.s, f.L); f.s.geometry.dispose(); f.s.material.dispose(); this.fx.splice(i, 1); }
+    }
+  }
+
   activateBot(b) {
     const free = this.map.free, W = this.world, P = this.player;
     const ref = P.alive ? P : (this.cpus.find(c => c.alive) || P);
@@ -437,6 +607,7 @@ export class Game {
     if (this.state === 'paused') return;
     this.time += dt;
     this.updatePlayer(dt);
+    this.updateWeapons(dt);
     for (const c of this.cpus) this.updateCpu(c, dt);
     for (const b of this.bots) this.updateBot(b, dt);
     this.separate();
@@ -454,7 +625,7 @@ export class Game {
     const moving = len > 0.05;
     const wantRun = (k.has('ShiftLeft') || k.has('ShiftRight') || this.sprintBtn || len > 0.95 && this.sprintBtn) && moving;
     let speed = 5.0;
-    if (wantRun && p.stamina > 0 && !p.tired) { speed = 8.4; p.stamina -= dt * 0.2; if (p.stamina <= 0) p.tired = true; }
+    if (wantRun && p.stamina > 0 && !p.tired) { speed = 10.2; p.stamina -= dt * 0.1; if (p.stamina <= 0) p.tired = true; }
     else { p.stamina = Math.min(1, p.stamina + dt * (moving ? 0.1 : 0.2)); if (p.tired && p.stamina > 0.3) p.tired = false; }
     const sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
     const dx = (-sn * f + cs * s) * speed * dt, dz = (-cs * f - sn * s) * speed * dt;
@@ -543,6 +714,7 @@ export class Game {
 
   updateBot(b, dt) {
     if (!b.active) { if (this.time >= b.spawnAt) this.activateBot(b); return; }
+    if (b.stun > 0) { b.stun -= dt; return; }
     const W = this.world;
     b.retarget -= dt;
     if (b.retarget <= 0 || !b.target || !b.target.alive) {
@@ -658,6 +830,7 @@ export class Game {
     for (const b of this.bots) {
       if (!b.active) continue;
       b.phase += dt * 7;
+      b.mesh.material.color.setHex(b.stun > 0 ? 0x6f9bff : 0xffffff);
       const ang = Math.atan2(cam.position.x - b.x, cam.position.z - b.z);
       const sc = 1 + Math.sin(b.phase * 1.3) * 0.05;
       b.mesh.position.set(b.x, 1.45 + Math.sin(b.phase) * 0.08, b.z);
@@ -726,6 +899,9 @@ export class Game {
   updateHud() {
     $('hudTime').textContent = fmt(Math.max(0, this.round - this.time));
     $('hudAlive').textContent = `👥 ${this.alive()} / ${this.cpus.length + 1}`;
+    const wh = $('weaponHud');
+    if (this.weapon) { const d = WEAPONS[this.weapon.type]; wh.textContent = `🔫 ${d.name} · ${this.weapon.ammo}`; wh.classList.remove('hidden'); } else wh.classList.add('hidden');
+    $('btnFire').style.visibility = this.weapon ? 'visible' : 'hidden';
     const st = $('stamina'); st.style.width = (this.player.stamina * 100).toFixed(0) + '%'; st.classList.toggle('low', this.player.tired);
     this.drawMini();
     if (this.boardOpen) this.renderBoard();
@@ -767,6 +943,11 @@ export class Game {
     for (const b of this.bots) {
       if (!b.active || Math.hypot(b.x - p.x, b.z - p.z) > 30) continue;
       x.fillStyle = '#ff2a3d'; x.beginPath(); x.arc(b.x * k, b.z * k, 3, 0, 6.3); x.fill();
+    }
+    for (const pk of this.pickups || []) {
+      if (pk.taken) continue;
+      x.fillStyle = pk.type === 'bazooka' ? '#ff8a2b' : '#ffe14d';
+      x.fillRect(pk.x * k - (pk.type === 'bazooka' ? 3 : 2), pk.z * k - (pk.type === 'bazooka' ? 3 : 2), pk.type === 'bazooka' ? 6 : 4, pk.type === 'bazooka' ? 6 : 4);
     }
     const px = p.x * k, pz = p.z * k, a = Math.atan2(-Math.cos(this.yaw), -Math.sin(this.yaw));
     x.save(); x.translate(px, pz); x.rotate(a); x.fillStyle = p.alive ? '#7fe3ff' : '#888';

@@ -9,7 +9,7 @@ El juego quedará en `https://10574084-cmd.github.io/Narrys-Mod/`.
 ## Características
 - Primera persona (teclado + ratón, y controles táctiles en móvil)
 - 12 mapas generados proceduralmente: Backrooms, Almacén, Mansión, Ciudad Nocturna, Bosque, Llanura Plana, Zona de Construcción, Gran Ciudad (Día), Isla Tropical, Minas Profundas, Búnker Militar y Laberinto de Setos
-- Hasta **30 jugadores CPU** con IA (pathfinding A*, huyen de los nextbots) y **100 nombres aleatorios** (`js/names.js`)
+- Hasta **30 jugadores CPU** con IA (pathfinding A*, huyen de los nextbots) y **500 nombres aleatorios** (`js/names.js`)
 - Nextbots con caras meme (incluidas) y **tus propias imágenes** (botón "Subir imágenes" o carpeta `images/memes/` + `manifest.json`)
 - Modelos humanoides 3D articulados, linterna, sombras, niebla, sonido procedural
 - Menú con mapa, nº de CPUs, nextbots, dificultad, duración y gráficos
@@ -20,3 +20,6 @@ WASD mover · Shift correr · Ratón mirar · F linterna · Tab lista de jugador
 
 ## Memes propios en el repo
 Pon imágenes en `images/memes/` y lista sus nombres en `images/memes/manifest.json`, por ejemplo `["gato.png","jefe.jpg"]`.
+
+## Armas
+Hay armas en el suelo (se recogen caminando encima; las ves por el rayo de luz y en el minimapa): **1 bazuca** en todo el mapa y 8 más (5 revólveres y 3 escopetas). Clic izquierdo para disparar. Revólver y escopeta aturden al nextbot unos segundos; la bazuca explota y destierra a los nextbots cercanos lejos de ti.

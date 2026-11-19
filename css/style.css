@@ -115,3 +115,7 @@ body.drag #menu::after { content: "Suelta tus imágenes aquí"; position: fixed;
 .navRow .play { margin: 0; width: auto; padding: 12px 34px; font-size: 1.2rem; }
 .panel.narrow { max-width: 640px; margin: 0 auto; }
 #btnJump { position: absolute; right: 120px; bottom: 60px; width: 70px; height: 70px; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.14); color: #fff; font-weight: 800; font-size: .6rem; }
+
+#weaponHud { position: absolute; right: 16px; bottom: 22px; padding: 6px 14px; background: rgba(0,0,0,.55); border: 1px solid #ffd24d; border-radius: 10px; color: #ffd24d; font: 900 1.1rem Impact, "Arial Black", sans-serif; letter-spacing: .06em; }
+body.touch #weaponHud { bottom: auto; top: 60px; }
+#btnFire { position: absolute; right: 120px; bottom: 140px; width: 64px; height: 64px; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(255,210,77,.7); background: rgba(255,210,77,.2); color: #fff; font-size: 1.5rem; }
