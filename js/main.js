@@ -1,6 +1,7 @@
 // Menú principal, ajustes y conexión con el juego
 import { MAP_DEFS, generateMap, N } from './maps.js';
 import { Game, isTouch } from './game.js';
+import { TitleScene } from './title.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
 
 const $ = id => document.getElementById(id);
@@ -9,6 +10,7 @@ if (isTouch) document.body.classList.add('touch');
 const KEY = 'narrysmod_cfg_v1';
 const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', fov: 80, sens: 10, name: 'Jugador', only: false, counts: {} },
   (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })());
+let title = null;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* nada */ } };
 
 /* ---------- caras flotando de fondo ---------- */
@@ -47,6 +49,9 @@ function selectMap(i) {
   cfg.map = i; save();
   [...mapsEl.children].forEach((el, k) => el.classList.toggle('sel', k === i));
   $('mapDesc').textContent = MAP_DEFS[i].desc;
+  document.querySelectorAll('.chip').forEach((el, k) => el.classList.toggle('sel', k === i));
+  if (title) title.setMap(MAP_DEFS[i]);
+  if (typeof updSummary === 'function') updSummary();
 }
 
 /* ---------- ajustes ---------- */
@@ -94,6 +99,10 @@ window.addEventListener('dragover', e => { if (!$('menu').classList.contains('hi
 window.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('drag'); });
 window.addEventListener('drop', e => { document.body.classList.remove('drag'); if (!$('menu').classList.contains('hidden')) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });
 renderMemes();
+MAP_DEFS.forEach((def, i) => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = `${def.icon} ${def.name}`;
+  b.onclick = () => selectMap(i); $('mapChips').appendChild(b);
+});
 selectMap(cfg.map);
 
 /* ---------- juego ---------- */
@@ -101,7 +110,7 @@ const game = new Game($('c'));
 const show = (id, on) => $(id).classList.toggle('hidden', !on);
 
 function toMenu() {
-  go('scrMain');
+  go('scrMain'); if (title) { title.resize(); title.start(); }
   game.stop(); show('hud', false); show('over', false); show('pause', false); show('scare', false); show('menu', true);
   if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -126,6 +135,7 @@ async function play() {
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
     return;
   }
+  if (title) title.pause();
   show('menu', false); show('loading', false); show('over', false); show('hud', true); show('pause', false);
   game.lock();
 }
@@ -161,5 +171,12 @@ $('retry').onclick = () => { show('over', false); play(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = toMenu;
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
 window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT') play(); });
+
+try {
+  title = new TitleScene($('bg3d'));
+  title.setMap(MAP_DEFS[cfg.map]); title.start();
+  $('menu').classList.add('has3d'); $('bgfaces').remove();
+  window.__title = title;
+} catch (err) { console.warn('Fondo 3D no disponible', err); $('bg3d').remove(); $('bgShade').remove(); }
 
 window.__game = game; // útil para depurar en la consola
