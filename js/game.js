@@ -411,7 +411,7 @@ export class Game {
     this.sfx.spawn();
   }
 
-  botSpeed() { return 4.3 * DIFF[this.opts.diff] * (1 + 0.5 * Math.min(1, this.time / this.round)); }
+  botSpeed() { return 6.0 * DIFF[this.opts.diff] * (1 + 0.35 * Math.min(1, this.time / this.round)); }
 
   alive() { return (this.player.alive ? 1 : 0) + this.cpus.filter(c => c.alive).length; }
 
@@ -443,7 +443,7 @@ export class Game {
     const len = Math.hypot(f, s); if (len > 1) { f /= len; s /= len; }
     const moving = len > 0.05;
     const wantRun = (k.has('ShiftLeft') || k.has('ShiftRight') || this.sprintBtn || len > 0.95 && this.sprintBtn) && moving;
-    let speed = 3.6;
+    let speed = 5.0;
     if (wantRun && p.stamina > 0 && !p.tired) { speed = 8.4; p.stamina -= dt * 0.2; if (p.stamina <= 0) p.tired = true; }
     else { p.stamina = Math.min(1, p.stamina + dt * (moving ? 0.1 : 0.2)); if (p.tired && p.stamina > 0.3) p.tired = false; }
     const sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
