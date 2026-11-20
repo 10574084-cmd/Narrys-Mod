@@ -49,3 +49,7 @@ En el menú principal hay una sección **Códigos secretos**. El código `odio e
 - Tienes **100 CPUs armados** de aliados; hay 25 armas por el mapa que reaparecen a los 20 s (también las bazucas).
 - Tus disparos y los de los CPU le quitan vida (revólver 6, escopeta 14, bazuca 90). Si lo derrotas ganas la ronda.
 - Si **pierdes el boss fight**, la pantalla de derrota muestra un botón «TOCA AQUÍ» que abre otra página en una ventana emergente (pop-up).
+
+## 🎯 Mira del arma y 🔓 desbloqueos
+- **Apuntar:** mantén el **clic derecho** (en celular, el botón 🎯) para hacer zoom con mira, menos sensibilidad y más precisión al disparar. El arma equipada también muestra una mira en cruz.
+- **Al ganar el boss fight** (tú o tus CPUs) se desbloquean, de forma permanente en tu navegador: el nextbot **ODIO EL CHOCOLATE** (aparece en «Memes / nextbots» para usarlo en cualquier mapa) y el mapa **Backrooms Planos** (en «Mapa y partida»).

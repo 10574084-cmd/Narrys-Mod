@@ -11,6 +11,12 @@ const KEY = 'narrysmod_cfg_v1';
 const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', size: 48, fov: 80, sens: 10, name: 'Jugador', only: false, counts: {} },
   (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })());
 let title = null;
+const UKEY = 'narrysmod_unlocks_v1';
+const unlocks = (() => { try { return JSON.parse(localStorage.getItem(UKEY) || '{}'); } catch { return {}; } })();
+const saveUnl = () => { try { localStorage.setItem(UKEY, JSON.stringify(unlocks)); } catch { /* nada */ } };
+let chocoCache = null;
+if (unlocks.choco && !MAP_DEFS.includes(CHOCO_DEF)) MAP_DEFS.push(CHOCO_DEF); // mapa del jefe desbloqueado
+if (cfg.map >= MAP_DEFS.length) cfg.map = 0;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* nada */ } };
 
 /* ---------- caras flotando de fondo ---------- */
@@ -37,14 +43,15 @@ function drawPreview(canvas, def) {
   }
 }
 const mapsEl = $('maps');
-MAP_DEFS.forEach((def, i) => {
+function addMapCard(def, i) {
   const d = document.createElement('div'); d.className = 'map'; d.dataset.i = i;
   const c = document.createElement('canvas'); d.appendChild(c);
   const sp = document.createElement('span'); sp.textContent = `${def.icon} ${def.name}`; d.appendChild(sp);
   d.onclick = () => selectMap(i);
   mapsEl.appendChild(d);
   try { drawPreview(c, def); } catch (e) { console.warn(e); }
-});
+}
+MAP_DEFS.forEach(addMapCard);
 function selectMap(i) {
   cfg.map = i; save();
   [...mapsEl.children].forEach((el, k) => el.classList.toggle('sel', k === i));
@@ -68,9 +75,21 @@ for (const [id, key, num] of [['pSize', 'size', true], ['pDiff', 'diff', true], 
 $('pOnly').checked = cfg.only; $('pOnly').onchange = e => { cfg.only = e.target.checked; save(); };
 function updHint() { $('rtHint').style.display = cfg.quality === 'rt' ? 'block' : 'none'; }
 updHint();
+async function getChocoEntry() {
+  if (!chocoCache) {
+    const blob = await (await fetch('assets/odio-el-chocolate.mp4')).blob();
+    chocoCache = { id: 'secret-choco', name: 'ODIO EL CHOCOLATE', kind: 'video', blob, aspect: 1, thumb: await chocoThumb(blob), builtin: true };
+  }
+  return chocoCache;
+}
+async function fullPool() { // memes normales + el jefe si está desbloqueado
+  const pool = await buildMemePool();
+  if (unlocks.choco) { try { pool.push(await getChocoEntry()); } catch (e) { console.warn('Jefe no disponible', e); } }
+  return pool;
+}
 async function renderMemes() {
   const list = $('memeList'); let pool = [];
-  try { pool = await buildMemePool(); } catch (e) { console.warn(e); }
+  try { pool = await fullPool(); } catch (e) { console.warn(e); }
   list.innerHTML = '';
   for (const e of pool) {
     const n = cfg.counts[e.id] || 0, d = document.createElement('div');
@@ -99,10 +118,11 @@ window.addEventListener('dragover', e => { if (!$('menu').classList.contains('hi
 window.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('drag'); });
 window.addEventListener('drop', e => { document.body.classList.remove('drag'); if (!$('menu').classList.contains('hidden')) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });
 renderMemes();
-MAP_DEFS.forEach((def, i) => {
+function addMapChip(def, i) {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = `${def.icon} ${def.name}`;
   b.onclick = () => selectMap(i); $('mapChips').appendChild(b);
-});
+}
+MAP_DEFS.forEach(addMapChip);
 selectMap(cfg.map);
 
 /* ---------- juego ---------- */
@@ -120,7 +140,7 @@ async function play() {
   game.sfx.init(MAP_DEFS[cfg.map].drone); // el clic cuenta como gesto para activar el audio
   await new Promise(r => setTimeout(r, 30));
   try {
-    let pool = await buildMemePool();
+    let pool = await fullPool();
     if (cfg.only && pool.some(e => !e.builtin)) pool = pool.filter(e => !e.builtin);
     const plan = [];
     for (const e of pool) for (let k = 0; k < (cfg.counts[e.id] || 0); k++) plan.push(e);
@@ -140,22 +160,34 @@ async function play() {
   game.lock();
 }
 
+function unlockMsg(text) { const el = $('unlockMsg'); el.textContent = text || ''; el.classList.toggle('hidden', !text); }
+function unlockChoco() {
+  if (unlocks.choco) return false;
+  unlocks.choco = true; saveUnl();
+  if (!MAP_DEFS.includes(CHOCO_DEF)) { MAP_DEFS.push(CHOCO_DEF); addMapCard(CHOCO_DEF, MAP_DEFS.length - 1); addMapChip(CHOCO_DEF, MAP_DEFS.length - 1); }
+  renderMemes();
+  return true;
+}
+function bossReward() {
+  if (!game.bossDead) return unlockMsg('');
+  unlockMsg(unlockChoco() ? '🔓 ¡Desbloqueaste el nextbot ODIO EL CHOCOLATE y el mapa Backrooms Planos! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados el nextbot y el mapa del jefe.');
+}
 game.onEvent = (type, d) => {
   if (type === 'pause') {
     if (!$('over').classList.contains('hidden') || !$('chocoBox').classList.contains('hidden')) return; // ya hay una pantalla encima
     if (game.state === 'playing' || game.state === 'dead') { game.pause(); show('pause', true); }
   } else if (type === 'dead') {
-    $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
+    unlockMsg(''); $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
     show('choco', game.state === 'dead' && !game.chocoUsed); show('loseLink', !!(game.opts && game.opts.boss));
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
-    show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
+    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
     $('overText').textContent = game.bossDead ? `¡Derrotaste a ODIO EL CHOCOLATE junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'end') {
-    show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead);
+    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead);
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
     $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ODIO EL CHOCOLATE. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
     $('spectHint').textContent = ''; show('over', true);
@@ -198,8 +230,7 @@ async function playBoss() {
   game.sfx.init(CHOCO_DEF.drone);
   await new Promise(r => setTimeout(r, 30));
   try {
-    const blob = await (await fetch('assets/odio-el-chocolate.mp4')).blob();
-    const entry = { id: 'secret-choco', name: 'ODIO EL CHOCOLATE', kind: 'video', blob, aspect: 1, thumb: await chocoThumb(blob), builtin: false };
+    const entry = await getChocoEntry();
     $('loadText').textContent = 'Construyendo la arena…';
     await game.start({ boss: true, def: CHOCO_DEF, map: 0, cpus: 100, bots: 1, plan: [entry], diff: 1, size: 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, [entry]);

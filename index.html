@@ -97,7 +97,7 @@
           <label>Sensibilidad <b id="vSens"></b><input id="pSens" type="range" min="2" max="30" value="10"></label>
 
           <h2>Controles</h2>
-          <p class="hint"><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Clic</b> disparar · <b>1 2 3</b> armas · <b>E</b> revivir · <b>Esc</b> pausa</p>
+          <p class="hint"><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Clic</b> disparar · <b>Clic derecho</b> apuntar · <b>1 2 3</b> armas · <b>E</b> revivir · <b>Esc</b> pausa</p>
         </section>
         <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>
@@ -160,6 +160,7 @@
       <button id="btnLight">🔦</button>
       <button id="btnJump">SALTAR</button>
       <button id="btnFire" style="visibility:hidden">🔫</button>
+      <button id="btnAim" style="visibility:hidden">🎯</button>
       <button id="btnRevive" style="visibility:hidden">💚</button>
     </div>
   </div>
@@ -186,6 +187,7 @@
         <button id="retry" class="btn">Reintentar</button>
         <button id="toMenu2" class="btn ghost">Menú</button>
       </div>
+      <p class="hint hidden" id="unlockMsg"></p>
       <div id="loseLink" class="hidden"><p>Perdiste… <b>toca este botón</b> 👇</p><a class="btn" href="https://10574084-cmd.github.io/OdioElTrojano.org/player.html" target="_blank" rel="noopener noreferrer">👉 TOCA AQUÍ</a></div>
       <p class="hint" id="spectHint"></p>
     </div>

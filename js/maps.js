@@ -353,7 +353,7 @@ function genChocoArena(def, rng) {
 }
 
 export const CHOCO_DEF = {
-  id: 'chocoarena', name: 'Backrooms Planos', icon: '🍫', desc: 'Secreto',
+  id: 'chocoarena', name: 'Backrooms Planos', icon: '🍫', desc: 'Backrooms planos y sin techo: la arena del jefe. ¡Desbloqueada!',
   indoor: false, wallH: 3.4, sky: 0xd8cc78, fog: [0xcfc36e, 0.012], hemi: [0xfff3b0, 0x8a7a30, 1.5],
   tex: { wall: ['wallpaper', '#c9b458', '#b39c40'], floor: ['carpet', '#8c7c36'] },
   lamp: { color: 0xfff0a8, int: 0, dist: 20 }, moon: 0xfff2b0, sunInt: 1.9, pillar: 0xcdbb5e, flicker: 0, drone: 55, gen: genChocoArena,

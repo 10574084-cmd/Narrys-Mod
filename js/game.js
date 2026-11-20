@@ -36,9 +36,9 @@ const BOSS_HP = 14000;
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, shotgun: 2, bazooka: 3 };
 const WEAPONS = {
-  revolver: { name: 'REVÓLVER', dmg: 6, ammo: 6, cd: 0.55, stun: 3.2, range: 60, tol: 1.15, grow: 0.0, beam: 0xffd24d },
-  shotgun:  { name: 'ESCOPETA', dmg: 14, ammo: 4, cd: 0.95, stun: 4.5, range: 28, tol: 1.2, grow: 0.14, beam: 0x6bd8ff },
-  bazooka:  { name: 'BAZUCA', dmg: 90, ammo: 2, cd: 1.3, stun: 7, range: 90, tol: 1.3, grow: 0.0, beam: 0xff5a2a, blast: 9 },
+  revolver: { name: 'REVÓLVER', zoom: 0.5, dmg: 6, ammo: 6, cd: 0.55, stun: 3.2, range: 60, tol: 1.15, grow: 0.0, beam: 0xffd24d },
+  shotgun:  { name: 'ESCOPETA', zoom: 0.35, dmg: 14, ammo: 4, cd: 0.95, stun: 4.5, range: 28, tol: 1.2, grow: 0.14, beam: 0x6bd8ff },
+  bazooka:  { name: 'BAZUCA', zoom: 0.9, dmg: 90, ammo: 2, cd: 1.3, stun: 7, range: 90, tol: 1.3, grow: 0.0, beam: 0xff5a2a, blast: 9 },
 };
 
 function weaponModel(type) {
@@ -105,7 +105,8 @@ export class Game {
     window.addEventListener('blur', () => this.keys.clear());
     document.addEventListener('mousemove', e => {
       if (document.pointerLockElement !== this.canvas || this.state === 'menu') return;
-      this.yaw -= e.movementX * this.sens; this.pitch = clamp(this.pitch - e.movementY * this.sens, -1.45, 1.45);
+      const s = this.sens * (this.sensMul || 1);
+      this.yaw -= e.movementX * s; this.pitch = clamp(this.pitch - e.movementY * s, -1.45, 1.45);
     });
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement !== this.canvas && (this.state === 'playing' || this.state === 'dead') && !isTouch) this.onEvent('pause');
@@ -147,7 +148,13 @@ export class Game {
       d.addEventListener('pointerdown', () => { if (this.state === 'playing' && this.inv) this.equip(i); });
       $('hotbar').appendChild(d); return d;
     });
-    document.addEventListener('mousedown', e => { if (e.button === 0 && document.pointerLockElement === this.canvas && this.state === 'playing') this.fireReq = true; });
+    document.addEventListener('mousedown', e => {
+      if (document.pointerLockElement !== this.canvas || this.state !== 'playing') return;
+      if (e.button === 0) this.fireReq = true; else if (e.button === 2) this.aiming = true;
+    });
+    document.addEventListener('mouseup', e => { if (e.button === 2) this.aiming = false; });
+    document.addEventListener('contextmenu', e => { if (this.state === 'playing' || this.state === 'dead') e.preventDefault(); });
+    $('btnAim').addEventListener('pointerdown', () => { this.aiming = !this.aiming; });
     $('pauseBtn').addEventListener('click', () => this.onEvent('pause'));
     this.canvas.addEventListener('click', () => { if (this.state === 'dead') this.cycleSpectate(); });
   }
@@ -175,7 +182,7 @@ export class Game {
     const r = this.renderer;
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.dpr));
     r.shadowMap.enabled = q.shadows; r.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.camera.fov = opts.fov; this.camera.updateProjectionMatrix();
+    this.camera.fov = this.baseFov = opts.fov; this.camera.updateProjectionMatrix(); this.aiming = false; this.aimK = 0; this.sensMul = 1;
     this.buildScene();
     await this.setupPost();
     await this.buildMemes(opts.plan);
@@ -610,7 +617,7 @@ export class Game {
       const t = vx * d.x + vy * d.y + vz * d.z;
       if (t < 0 || t > def.range) continue;
       const dist = Math.hypot(vx - d.x * t, vy - d.y * t, vz - d.z * t);
-      if (dist > def.tol + def.grow * t + (b.boss ? b.bw * 0.4 : 0)) continue;
+      if (dist > def.tol * (1 - 0.35 * (this.aimK || 0)) + def.grow * t + (b.boss ? b.bw * 0.4 : 0)) continue;
       if (!this.world.los(p.x, p.z, b.x, b.z, 0.1)) continue;
       if (t < bt) { bt = t; best = b; }
     }
@@ -687,9 +694,20 @@ export class Game {
     if (this.fpModel) { // retroceso y vaivén del arma
       this.recoil = Math.max(0, (this.recoil || 0) - dt * 6);
       const bob = p.moving ? Math.sin(p.bob) * 0.008 : 0;
-      this.fpModel.position.set(this.fpBase.x, this.fpBase.y + bob - this.recoil * 0.02, this.fpBase.z + this.recoil * 0.12);
+      const a = this.aimK || 0; // al apuntar, el arma se centra en la pantalla
+      this.fpModel.position.set(this.fpBase.x * (1 - a), this.fpBase.y + 0.045 * a + bob * (1 - a) - this.recoil * 0.02, this.fpBase.z - 0.04 * a + this.recoil * 0.12);
       this.fpModel.rotation.x = this.recoil * 0.25;
     }
+    // apuntar (clic derecho / botón 🎯): zoom, menos sensibilidad y más precisión
+    const aimOn = !!(this.aiming && this.weapon && p.alive && this.state === 'playing');
+    if (!aimOn && this.aiming && (!this.weapon || !p.alive)) this.aiming = false;
+    this.aimK = (this.aimK || 0) + ((aimOn ? 1 : 0) - (this.aimK || 0)) * Math.min(1, dt * 14);
+    if (Math.abs(this.aimK) < 0.003) this.aimK = 0;
+    const zm = this.weapon ? WEAPONS[this.weapon.type].zoom : 0, z = 1 + this.aimK * zm;
+    this.sensMul = 1 / z;
+    const nf = this.baseFov / z;
+    if (Math.abs(this.camera.fov - nf) > 0.05) { this.camera.fov = nf; this.camera.updateProjectionMatrix(); }
+    const cr = $('cross'); cr.classList.toggle('armed', !!this.weapon); cr.classList.toggle('aim', this.aimK > 0.5);
     if (this.muzzle) { this.muzzleT = Math.max(0, (this.muzzleT || 0) - dt); this.muzzle.intensity = this.muzzleT > 0 ? 40 : 0; }
     // explosiones
     for (let i = this.fx.length - 1; i >= 0; i--) {
@@ -1256,7 +1274,7 @@ export class Game {
         el.querySelector('b').textContent = s ? WEAPONS[s.type].name : ''; el.querySelector('span').textContent = s ? s.ammo : '';
       });
     }
-    $('btnFire').style.visibility = this.weapon ? 'visible' : 'hidden';
+    $('btnFire').style.visibility = this.weapon ? 'visible' : 'hidden'; $('btnAim').style.visibility = this.weapon ? 'visible' : 'hidden';
     const rv = $('revive');
     if (this.reviveTarget && this.player.alive) {
       rv.classList.remove('hidden');

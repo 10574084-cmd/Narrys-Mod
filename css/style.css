@@ -167,3 +167,12 @@ body.touch #hotbar { bottom: 92px; }
 #loseLink { margin-top: 14px; text-align: center; }
 #loseLink p { margin: 0 0 8px; }
 #loseLink .btn { display: inline-block; text-decoration: none; }
+
+/* mira del arma */
+#cross.armed { width: 22px; height: 22px; margin: -11px; border-radius: 0; background: none; opacity: .9; transition: all .12s;
+  background:
+    linear-gradient(#fff,#fff) 50% 0 / 2px 7px no-repeat, linear-gradient(#fff,#fff) 50% 100% / 2px 7px no-repeat,
+    linear-gradient(#fff,#fff) 0 50% / 7px 2px no-repeat, linear-gradient(#fff,#fff) 100% 50% / 7px 2px no-repeat; filter: drop-shadow(0 0 2px #000); }
+#cross.armed.aim { width: 46px; height: 46px; margin: -23px; border: 2px solid rgba(255,255,255,.85); border-radius: 50%;
+  background: radial-gradient(circle, #ff3b3b 0 2px, transparent 3px); filter: drop-shadow(0 0 3px #000); }
+#btnAim { position: absolute; right: 200px; bottom: 140px; width: 64px; height: 64px; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(120,200,255,.7); background: rgba(120,200,255,.2); color: #fff; font-size: 1.5rem; }
