@@ -762,8 +762,9 @@ export class Game {
   botSees(b, e) {
     const dx = e.x - b.x, dz = e.z - b.z, d = Math.hypot(dx, dz);
     if (d > this.sightRange()) return false;
-    if (b.state === 'patrol' && d > 6) {
-      if ((dx * Math.sin(b.yaw) + dz * Math.cos(b.yaw)) / (d || 1) < 0.26) return false; // fuera de su visión (~150°)
+    if (b.state !== 'chase' && d > (b.state === 'search' ? 4 : 6)) {
+      const cone = b.state === 'search' ? -0.5 : 0.26; // buscando ve ~240°, patrullando ~150°
+      if ((dx * Math.sin(b.yaw) + dz * Math.cos(b.yaw)) / (d || 1) < cone) return false;
     }
     return this.world.los(b.x, b.z, e.x, e.z, 0.15);
   }
@@ -836,7 +837,10 @@ export class Game {
 
     if (b.state === 'chase') {
       const t = b.target;
-      if (t && t.alive) { b.lastX = t.x; b.lastZ = t.z; this.botGo(b, t.x, t.z, sp, dt); }
+      if (t && t.alive && this.botSees(b, t)) { b.lastX = t.x; b.lastZ = t.z; this.botGo(b, t.x, t.z, sp, dt); }
+      else { // te perdió de vista: va al ÚLTIMO sitio donde te vio (no sabe dónde te escondiste)
+        b.state = 'search'; b.path = null; b.repath = 0; b.stateT = 0; b.lostT = 0; b.searchX = b.lastX; b.searchZ = b.lastZ;
+      }
     } else if (b.state === 'search') {
       // va al último sitio donde vio a alguien, mira un poco alrededor y se rinde
       const left = this.botGo(b, b.searchX, b.searchZ, sp * 0.85, dt);
