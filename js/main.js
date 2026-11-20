@@ -172,7 +172,7 @@ $('choco').onclick = () => {
     if (game.revivePlayer()) { show('over', false); game.lock(); }
     else show('over', true);
   };
-  v.onended = finish; v.onerror = finish; $('chocoSkip').onclick = finish;
+  v.onended = finish; v.onerror = finish;
   v.currentTime = 0; v.muted = false;
   const pr = v.play(); if (pr && pr.catch) pr.catch(() => { v.muted = true; v.play().catch(finish); });
 };

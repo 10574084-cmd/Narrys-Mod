@@ -40,4 +40,4 @@ Los nextbots ya no saben dónde estás: **solo te persiguen cuando te ven** (dis
 Acércate al cuerpo de un CPU caído (los ves como puntos verdes en el minimapa) y **mantén E** durante 2.5 s (en celular, el botón 💚). Se levanta con 3 s de protección para escapar, pero sin arma. Si te alejas o sueltas la tecla, el progreso baja.
 - Hay **22 armas** en el mapa (1 bazuca, 13 revólveres, 8 escopetas) y los CPU esperan **10 s** al iniciar antes de empezar a recoger armas.
 - **Tamaño del mapa** en Opciones: Normal (48×48), Grande (64×64) o Enorme (80×80). Al crecer el mapa también aumenta la cantidad de armas.
-- **🍫 Odio el chocolate:** al morir aparece un botón extra que reproduce el video (`assets/odio-el-chocolate.mp4`, con opción de saltarlo) y te revive con 5 s de protección y los nextbots cercanos desterrados. Solo una vez por partida.
+- **🍫 Odio el chocolate:** al morir aparece un botón extra que reproduce el video (`assets/odio-el-chocolate.mp4`, no se puede saltar) y te revive con 5 s de protección y los nextbots cercanos desterrados. Solo una vez por partida.
