@@ -153,5 +153,5 @@ body.touch #hotbar { bottom: 92px; }
 .btn.choco:hover { background: #7a4720; }
 #chocoBox { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; align-items: center; justify-content: center; }
 #chocoBox.hidden { display: none; }
-#chocoVid { max-width: 100%; max-height: 100%; width: auto; height: 100%; aspect-ratio: 1 / 1; object-fit: contain; }
+#chocoVid { width: 100%; height: 100%; object-fit: fill; } /* estirado a pantalla completa */
 #chocoSkip { position: absolute; right: 16px; bottom: 16px; padding: 8px 14px; border-radius: 8px; border: 1px solid #fff5; background: #0008; color: #fff; font: inherit; cursor: pointer; }
