@@ -33,3 +33,6 @@ Los nextbots ya no saben dónde estás: **solo te persiguen cuando te ven** (dis
 ## Reaparición de armas y CPUs con armas
 - Las armas recogidas (por ti o por un CPU) **reaparecen a los 60 s** en otro punto del mapa. La **bazuca no reaparece**.
 - Los CPU buscan y recogen armas cuando no hay nextbots cerca; con munición se plantan a disparar (revólver, escopeta o bazuca) en vez de dejarse atrapar. Huyen mejor: evitan correr hacia los nextbots, prefieren esconderse fuera de su vista, corren a tope solo si el peligro está cerca y evitan pasear por zonas con nextbots.
+
+## Revivir CPUs
+Acércate al cuerpo de un CPU caído (los ves como puntos verdes en el minimapa) y **mantén E** durante 2.5 s (en celular, el botón 💚). Se levanta con 3 s de protección para escapar, pero sin arma. Si te alejas o sueltas la tecla, el progreso baja.

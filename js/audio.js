@@ -83,6 +83,16 @@ export class Sfx {
     this.burst(0.25, 2200, 0.35, 0.8);
   }
 
+  revive() {
+    if (!this.ctx) return;
+    const c = this.ctx, n = c.currentTime;
+    [660, 880].forEach((f, i) => {
+      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, n + i * 0.12); g.gain.exponentialRampToValueAtTime(0.25, n + i * 0.12 + 0.03); g.gain.exponentialRampToValueAtTime(0.001, n + i * 0.12 + 0.45);
+      o.connect(g); g.connect(this.master); o.start(n + i * 0.12); o.stop(n + i * 0.12 + 0.5);
+    });
+  }
+
   win() {
     if (!this.ctx) return;
     const c = this.ctx, n = c.currentTime;

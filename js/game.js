@@ -30,6 +30,7 @@ function haloTexture() {
   return new THREE.CanvasTexture(c);
 }
 
+const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, shotgun: 2, bazooka: 3 };
 const WEAPONS = {
@@ -136,6 +137,8 @@ export class Game {
     $('btnLight').addEventListener('pointerdown', () => { if (this.flash) this.flash.visible = !this.flash.visible; });
     $('btnJump').addEventListener('pointerdown', () => { this.jumpReq = true; });
     $('btnFire').addEventListener('pointerdown', () => { this.fireReq = true; });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('btnRevive').addEventListener(ev, () => { this.reviveBtn = false; });
+    $('btnRevive').addEventListener('pointerdown', () => { this.reviveBtn = true; });
     document.addEventListener('wheel', e => { if (document.pointerLockElement === this.canvas && this.state === 'playing' && this.inv && this.player.alive) this.cycleWeapon(e.deltaY > 0 ? 1 : -1); }, { passive: true });
     this.slotEls = [0, 1, 2].map(i => {
       const d = document.createElement('div'); d.className = 'slot empty'; d.innerHTML = `<i>${i + 1}</i><b></b><span></span>`;
@@ -459,6 +462,7 @@ export class Game {
   spawnPickups(pick, pw) {
     const W = this.world;
     this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
+    this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
     const list = ['bazooka', 'revolver', 'revolver', 'revolver', 'revolver', 'revolver', 'shotgun', 'shotgun', 'shotgun'];
     for (const type of list) {
       let spot = null;
@@ -490,6 +494,29 @@ export class Game {
   }
 
   // recoger: si ya tienes ese arma se suma munición (máx. x3); si no, va al primer slot libre y se equipa
+  // mantén E (o el botón 💚) cerca del cuerpo de un CPU para revivirlo
+  updateRevive(dt) {
+    const p = this.player; let target = null, bd = REVIVE_RANGE;
+    if (p.alive) for (const c of this.cpus) {
+      if (c.alive) continue;
+      const d = Math.hypot(c.x - p.x, c.z - p.z);
+      if (d < bd) { bd = d; target = c; }
+    }
+    if (target !== this.reviveTarget) this.reviveT = 0;
+    this.reviveTarget = target;
+    if (target && (this.keys.has('KeyE') || this.reviveBtn)) {
+      this.reviveT += dt;
+      if (this.reviveT >= REVIVE_TIME) { this.revive(target); this.reviveT = 0; this.reviveTarget = null; }
+    } else this.reviveT = Math.max(0, this.reviveT - dt * 2);
+  }
+
+  revive(c) {
+    c.alive = true; c.invuln = 3; c.mode = 'wander'; c.path = null; c.idle = 0.6; c.react = 0; c.lostT = 0;
+    c.stamina = 1; c.tired = false; c.spd = 0; c.aim = 0; c.gun = null; this.setCpuGunModel(c, null);
+    c.model.userData.fall = 0; c.model.rotation.x = 0; c.model.position.y = 0; c.tag.visible = true;
+    this.toast(`💚 Reviviste a ${c.name}`, 1800); this.feed(`💚 Reviviste a ${c.name}`, true); this.sfx.revive();
+  }
+
   // vuelve a aparecer en otro sitio al azar (lejos del jugador y de otras armas)
   respawnPickup(pk) {
     const W = this.world, free = this.map.free, P = this.player;
@@ -671,6 +698,7 @@ export class Game {
     this.time += dt;
     this.updatePlayer(dt);
     this.updateWeapons(dt);
+    this.updateRevive(dt);
     for (const c of this.cpus) this.updateCpu(c, dt);
     for (const b of this.bots) this.updateBot(b, dt);
     this.separate();
@@ -766,6 +794,7 @@ export class Game {
   updateCpu(c, dt) {
     const W = this.world;
     if (!c.alive) { animateHumanoid(c.model, dt, 0, true); return; }
+    if (c.invuln > 0) c.invuln -= dt;
     // percepción: nextbot más cercano y el más cercano que realmente ve
     let threat = null, td = 1e9, seen = null, sd = 1e9;
     const sight = c.skill > 0.65 ? 34 : 24;
@@ -995,7 +1024,7 @@ export class Game {
   }
 
   kill(e, bot) {
-    if (!e.alive) return;
+    if (!e.alive || e.invuln > 0) return;
     e.alive = false;
     if (e.type === 'cpu') {
       e.tag.visible = false; this.sfx.thud(clamp(1 - Math.hypot(e.x - this.player.x, e.z - this.player.z) / 40, 0.03, 0.5));
@@ -1140,6 +1169,13 @@ export class Game {
       });
     }
     $('btnFire').style.visibility = this.weapon ? 'visible' : 'hidden';
+    const rv = $('revive');
+    if (this.reviveTarget && this.player.alive) {
+      rv.classList.remove('hidden');
+      $('reviveText').textContent = `${isTouch ? 'Mantén 💚' : 'Mantén E'} para revivir a ${this.reviveTarget.name}`;
+      $('reviveFill').style.width = (this.reviveT / REVIVE_TIME * 100).toFixed(0) + '%';
+    } else rv.classList.add('hidden');
+    $('btnRevive').style.visibility = this.reviveTarget && this.player.alive ? 'visible' : 'hidden';
     const st = $('stamina'); st.style.width = (this.player.stamina * 100).toFixed(0) + '%'; st.classList.toggle('low', this.player.tired);
     this.drawMini();
     if (this.boardOpen) this.renderBoard();
@@ -1182,6 +1218,7 @@ export class Game {
       if (!b.active || Math.hypot(b.x - p.x, b.z - p.z) > 30) continue;
       x.fillStyle = b.state === 'chase' ? '#ff2a3d' : '#a8602a'; x.beginPath(); x.arc(b.x * k, b.z * k, 3, 0, 6.3); x.fill();
     }
+    for (const c of this.cpus) if (!c.alive && Math.hypot(c.x - p.x, c.z - p.z) < 45) { x.fillStyle = '#3ddc84'; x.fillRect(c.x * k - 2, c.z * k - 2, 4, 4); }
     for (const pk of this.pickups || []) {
       if (pk.taken) continue;
       x.fillStyle = pk.type === 'bazooka' ? '#ff8a2b' : '#ffe14d';

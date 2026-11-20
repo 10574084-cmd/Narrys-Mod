@@ -91,7 +91,7 @@
           <label>Sensibilidad <b id="vSens"></b><input id="pSens" type="range" min="2" max="30" value="10"></label>
 
           <h2>Controles</h2>
-          <p class="hint"><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Clic</b> disparar · <b>1 2 3</b> armas · <b>Esc</b> pausa</p>
+          <p class="hint"><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Clic</b> disparar · <b>1 2 3</b> armas · <b>E</b> revivir · <b>Esc</b> pausa</p>
         </section>
         <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>
@@ -113,7 +113,7 @@
       </div>
 
       <footer>
-        <p><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>F</b> linterna · <b>Clic</b> disparar · <b>1 2 3</b> armas · <b>Esc</b> pausa</p>
+        <p><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>F</b> linterna · <b>Clic</b> disparar · <b>1 2 3</b> armas · <b>E</b> revivir · <b>Esc</b> pausa</p>
         <p class="hint">Busca armas en el suelo (hay 1 bazuca en todo el mapa). Sobrevive hasta que acabe el tiempo. Los nextbots persiguen al jugador más cercano y cada vez van más rápido.</p>
       </footer>
     </div>
@@ -130,6 +130,7 @@
     <div id="staminaWrap"><div id="stamina"></div></div>
     <div id="cross"></div>
     <div id="hotbar"></div>
+    <div id="revive" class="hidden"><span id="reviveText"></span><div id="reviveBar"><div id="reviveFill"></div></div></div>
     <div id="board" class="hidden"></div>
     <button id="pauseBtn" class="touchOnly">❚❚</button>
     <div id="touch" class="touchOnly">
@@ -138,6 +139,7 @@
       <button id="btnLight">🔦</button>
       <button id="btnJump">SALTAR</button>
       <button id="btnFire" style="visibility:hidden">🔫</button>
+      <button id="btnRevive" style="visibility:hidden">💚</button>
     </div>
   </div>
 
