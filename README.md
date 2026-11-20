@@ -38,3 +38,4 @@ Los nextbots ya no saben dónde estás: **solo te persiguen cuando te ven** (dis
 
 ## Revivir CPUs
 Acércate al cuerpo de un CPU caído (los ves como puntos verdes en el minimapa) y **mantén E** durante 2.5 s (en celular, el botón 💚). Se levanta con 3 s de protección para escapar, pero sin arma. Si te alejas o sueltas la tecla, el progreso baja.
+- Hay **22 armas** en el mapa (1 bazuca, 13 revólveres, 8 escopetas) y los CPU esperan **10 s** al iniciar antes de empezar a recoger armas.

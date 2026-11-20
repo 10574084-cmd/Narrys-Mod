@@ -31,6 +31,7 @@ function haloTexture() {
 }
 
 const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
+const CPU_LOOT_DELAY = 10;
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, shotgun: 2, bazooka: 3 };
 const WEAPONS = {
@@ -463,14 +464,14 @@ export class Game {
     const W = this.world;
     this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
     this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
-    const list = ['bazooka', 'revolver', 'revolver', 'revolver', 'revolver', 'revolver', 'shotgun', 'shotgun', 'shotgun'];
+    const list = ['bazooka', ...Array(13).fill('revolver'), ...Array(8).fill('shotgun')];
     for (const type of list) {
       let spot = null;
       for (let t = 0; t < 80 && !spot; t++) {
         const c = W.cellWorld(pick());
         const minP = type === 'bazooka' ? 22 : 7;
         if (Math.hypot(c.x - pw.x, c.z - pw.z) < minP) continue;
-        if (this.pickups.some(p => Math.hypot(p.x - c.x, p.z - c.z) < 8)) continue;
+        if (this.pickups.some(p => Math.hypot(p.x - c.x, p.z - c.z) < 6)) continue;
         spot = c;
       }
       if (!spot) spot = W.cellWorld(pick());
@@ -795,6 +796,7 @@ export class Game {
 
   // busca el arma más cercana que le interese (solo si no hay nextbots cerca)
   cpuLoot(c) {
+    if (this.time < CPU_LOOT_DELAY) return false; // al iniciar, los CPU esperan antes de buscar armas
     if (Math.random() > 0.7 + c.skill * 0.3) return false;
     if (this.bots.some(b => b.active && Math.hypot(b.x - c.x, b.z - c.z) < 16)) return false;
     let best = null, bd = 45;
@@ -869,7 +871,7 @@ export class Game {
     } else c.stamina = Math.min(1, c.stamina + dt * 0.12);
     c.spd += (sp - c.spd) * Math.min(1, dt * 8);
     // recoger armas al pasar por encima
-    for (const pk of this.pickups) if (!pk.taken && Math.hypot(pk.x - c.x, pk.z - c.z) < 1.4 && this.cpuWants(c, pk.type)) { this.cpuTake(c, pk); break; }
+    if (this.time >= CPU_LOOT_DELAY) for (const pk of this.pickups) if (!pk.taken && Math.hypot(pk.x - c.x, pk.z - c.z) < 1.4 && this.cpuWants(c, pk.type)) { this.cpuTake(c, pk); break; }
     c.stuckT += dt;
     if (c.stuckT > 0.9) {
       if (sp > 0 && Math.hypot(c.x - c.lx, c.z - c.lz) < 0.3) { c.path = null; c.repath = 0; c.idle = 0; }
