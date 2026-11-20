@@ -148,13 +148,14 @@ game.onEvent = (type, d) => {
     $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
-    show('choco', game.state === 'dead' && !game.chocoUsed);
+    show('choco', game.state === 'dead' && !game.chocoUsed); show('loseLink', !!(game.opts && game.opts.boss));
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
-    $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
+    show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
     $('overText').textContent = game.bossDead ? `¡Derrotaste a ODIO EL CHOCOLATE junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'end') {
+    show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead);
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
     $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ODIO EL CHOCOLATE. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
     $('spectHint').textContent = ''; show('over', true);

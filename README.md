@@ -48,3 +48,4 @@ En el menú principal hay una sección **Códigos secretos**. El código `odio e
 - **ODIO EL CHOCOLATE** es un nextbot gigante (el video del mismo nombre, con su audio) con barra de vida; te persigue aunque no te vea y se enfurece al perder vida.
 - Tienes **100 CPUs armados** de aliados; hay 25 armas por el mapa que reaparecen a los 20 s (también las bazucas).
 - Tus disparos y los de los CPU le quitan vida (revólver 6, escopeta 14, bazuca 90). Si lo derrotas ganas la ronda.
+- Si **pierdes el boss fight**, la pantalla de derrota muestra un botón «TOCA AQUÍ» que abre otra página en una pestaña nueva.
