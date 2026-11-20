@@ -1,5 +1,5 @@
 // Menú principal, ajustes y conexión con el juego
-import { MAP_DEFS, generateMap, N } from './maps.js';
+import { MAP_DEFS, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
@@ -8,7 +8,7 @@ const $ = id => document.getElementById(id);
 if (isTouch) document.body.classList.add('touch');
 
 const KEY = 'narrysmod_cfg_v1';
-const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', fov: 80, sens: 10, name: 'Jugador', only: false, counts: {} },
+const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', size: 48, fov: 80, sens: 10, name: 'Jugador', only: false, counts: {} },
   (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })());
 let title = null;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* nada */ } };
@@ -26,7 +26,7 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } cat
 
 /* ---------- selector de mapas con vista previa ---------- */
 function drawPreview(canvas, def) {
-  const m = generateMap(def, 1234 + def.id.length * 17), s = 4;
+  setMapSize(48); const m = generateMap(def, 1234 + def.id.length * 17), s = 4;
   canvas.width = canvas.height = N * s;
   const x = canvas.getContext('2d');
   x.fillStyle = '#000'; x.fillRect(0, 0, N * s, N * s);
@@ -62,8 +62,8 @@ function bindRange(id, key, out, f = v => v) {
 bindRange('pCpus', 'cpus', 'vCpus'); bindRange('pBots', 'bots', 'vBots');
 bindRange('pFov', 'fov', 'vFov', v => v + '°'); bindRange('pSens', 'sens', 'vSens', v => (v / 10).toFixed(1) + '×');
 $('pName').value = cfg.name; $('pName').oninput = e => { cfg.name = e.target.value.trim().slice(0, 16) || 'Jugador'; save(); };
-for (const [id, key, num] of [['pDiff', 'diff', true], ['pDur', 'dur', true], ['pQual', 'quality', false]]) {
-  const el = $(id); el.value = cfg[key]; el.onchange = () => { cfg[key] = num ? +el.value : el.value; save(); updHint(); };
+for (const [id, key, num] of [['pSize', 'size', true], ['pDiff', 'diff', true], ['pDur', 'dur', true], ['pQual', 'quality', false]]) {
+  const el = $(id); el.value = cfg[key]; el.onchange = () => { cfg[key] = num ? +el.value : el.value; save(); updHint(); updSummary(); };
 }
 $('pOnly').checked = cfg.only; $('pOnly').onchange = e => { cfg.only = e.target.checked; save(); };
 function updHint() { $('rtHint').style.display = cfg.quality === 'rt' ? 'block' : 'none'; }
@@ -129,7 +129,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, diff: cfg.diff, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, diff: cfg.diff, size: cfg.size, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -164,7 +164,7 @@ function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.
 document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });
 function updSummary() {
   const q = { low: 'Bajo', med: 'Medio', high: 'Alto', rt: 'Raytracing' }[cfg.quality];
-  $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
+  $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
 }
 updSummary();
 $('retry').onclick = () => { show('over', false); play(); };

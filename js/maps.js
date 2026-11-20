@@ -1,5 +1,6 @@
 // 5 mapas generados proceduralmente (cada partida es un layout distinto)
-export const N = 48;       // celdas por lado
+export let N = 48;       // celdas por lado (se puede cambiar con setMapSize antes de generar)
+export const setMapSize = n => { N = n; };
 export const CELL = 2.5;   // metros por celda
 
 export function makeRng(a) {
@@ -104,7 +105,7 @@ const tree = (s, dark) => [
 /* ---------------------------- BACKROOMS ---------------------------- */
 function genBackrooms(def, rng) {
   const c = ctxNew(def, rng); c.g.fill(1);
-  const nn = 15, nx = i => 1 + 3 * i;
+  const nn = Math.floor((N - 1) / 3), nx = i => 1 + 3 * i;
   const carveNode = (i, j) => { for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) c.g[I(nx(i) + a, nx(j) + b)] = 0; };
   const link = (i, j, k, l) => {
     if (i !== k) { const i0 = Math.min(i, k); for (let b = 0; b < 2; b++) c.g[I(nx(i0) + 2, nx(j) + b)] = 0; }

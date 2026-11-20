@@ -1,6 +1,6 @@
 // Motor del juego: escena 3D, primera persona, jugadores CPU, nextbots, HUD
 import * as THREE from 'three';
-import { N, CELL, MAP_DEFS, generateMap } from './maps.js';
+import { N, CELL, MAP_DEFS, generateMap, setMapSize } from './maps.js';
 import { World } from './world.js';
 import { TEX } from './textures.js';
 import { createHumanoid, animateHumanoid, makeNameTag } from './models.js';
@@ -168,6 +168,7 @@ export class Game {
     const q = this.q = Q[opts.quality] || Q.med;
     this.sens = 0.0022 * opts.sens;
     const seed = (Math.random() * 1e9) | 0;
+    setMapSize(opts.size || 48);
     this.map = generateMap(def, seed);
     this.world = new World(this.map);
     const r = this.renderer;
@@ -464,7 +465,8 @@ export class Game {
     const W = this.world;
     this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
     this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
-    const list = ['bazooka', ...Array(13).fill('revolver'), ...Array(8).fill('shotgun')];
+    const k = (N / 48) ** 2; // más mapa = más armas
+    const list = ['bazooka', ...Array(Math.round(13 * k)).fill('revolver'), ...Array(Math.round(8 * k)).fill('shotgun')];
     for (const type of list) {
       let spot = null;
       for (let t = 0; t < 80 && !spot; t++) {

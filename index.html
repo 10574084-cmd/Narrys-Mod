@@ -54,8 +54,13 @@
         <section class="panel">
           <h2>Partida</h2>
           <label>Tu nombre <input id="pName" maxlength="16" value="Jugador"></label>
-          <label>Jugadores CPU <b id="vCpus"></b><input id="pCpus" type="range" min="0" max="30" value="20"></label>
+          <label>Jugadores CPU <b id="vCpus"></b><input id="pCpus" type="range" min="0" max="60" value="20"></label>
           <label>Nextbots <b id="vBots"></b><input id="pBots" type="range" min="1" max="20" value="3"></label>
+          <label>Tamaño del mapa
+            <select id="pSize">
+              <option value="48" selected>Normal</option><option value="64">Grande</option><option value="80">Enorme</option>
+            </select>
+          </label>
           <label>Dificultad
             <select id="pDiff">
               <option value="0">Fácil</option><option value="1" selected>Normal</option>
