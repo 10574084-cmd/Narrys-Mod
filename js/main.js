@@ -222,6 +222,12 @@ function tryCode() {
 $('codeGo').onclick = tryCode;
 $('codeIn').onkeydown = e => { if (e.key === 'Enter') tryCode(); };
 
+// la página del troll se abre en una ventana emergente (así puede moverse); si el navegador la bloquea, se abre en pestaña
+document.querySelector('#loseLink a').onclick = e => {
+  const w = 480, h = 360, l = Math.max(0, (screen.width - w) / 2), t = Math.max(0, (screen.height - h) / 2);
+  const pop = window.open(e.currentTarget.href, 'odioeltroyano', `popup=yes,width=${w},height=${h},left=${l},top=${t}`);
+  if (pop) e.preventDefault();
+};
 $('play').onclick = () => { lastBoss = false; play(); }; $('play2').onclick = () => { lastBoss = false; play(); };
 function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id)); if (id === 'scrMain') updSummary(); $('menu').scrollTop = 0; }
 document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });
