@@ -11,6 +11,8 @@ const KEY = 'narrysmod_cfg_v1';
 const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', size: 48, fov: 80, sens: 10, name: 'Jugador', only: false, counts: {} },
   (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })());
 let title = null;
+if (cfg.ai === undefined) cfg.ai = !cfg.only; // antes: «usar solo mis imágenes»
+const isAI = e => !!e.builtin && e.id !== 'secret-choco'; // los de IA = los que hice yo (el jefe no cuenta)
 cfg.choco = Object.assign({ size: 9, hp: 14000 }, cfg.choco || {});
 const UKEY = 'narrysmod_unlocks_v1';
 const unlocks = (() => { try { return JSON.parse(localStorage.getItem(UKEY) || '{}'); } catch { return {}; } })();
@@ -73,7 +75,12 @@ $('pName').value = cfg.name; $('pName').oninput = e => { cfg.name = e.target.val
 for (const [id, key, num] of [['pSize', 'size', true], ['pDiff', 'diff', true], ['pDur', 'dur', true], ['pQual', 'quality', false]]) {
   const el = $(id); el.value = cfg[key]; el.onchange = () => { cfg[key] = num ? +el.value : el.value; save(); updHint(); updSummary(); };
 }
-$('pOnly').checked = cfg.only; $('pOnly').onchange = e => { cfg.only = e.target.checked; save(); };
+function updAI() {
+  const b = $('btnAI'); b.textContent = `🤖 Nextbots de IA: ${cfg.ai ? 'SÍ' : 'NO'}`; b.classList.toggle('ghost', !cfg.ai); b.setAttribute('aria-pressed', cfg.ai);
+  $('aiHint').textContent = cfg.ai ? 'Se usan los de IA y los tuyos.' : 'Solo se usan tus imágenes (si no subiste ninguna, se usan los de IA).';
+}
+$('btnAI').onclick = () => { cfg.ai = !cfg.ai; save(); updAI(); renderMemes(); };
+updAI();
 function updHint() { $('rtHint').style.display = cfg.quality === 'rt' ? 'block' : 'none'; }
 updHint();
 async function getChocoEntry() {
@@ -94,7 +101,7 @@ async function renderMemes() {
   list.innerHTML = '';
   for (const e of pool) {
     const n = cfg.counts[e.id] || 0, d = document.createElement('div');
-    d.className = 'meme' + (n ? ' on' : '');
+    d.className = 'meme' + (n ? ' on' : '') + (!cfg.ai && isAI(e) ? ' off' : '');
     d.innerHTML = `<img alt=""><span></span><div class="cnt"><button type="button">−</button><b>${n}</b><button type="button">+</button></div>`;
     d.querySelector('img').src = e.thumb; d.querySelector('span').textContent = e.name; d.title = e.name;
     if (e.kind === 'gif' || e.kind === 'video') { const t = document.createElement('i'); t.className = 'tag'; t.textContent = e.kind.toUpperCase(); d.appendChild(t); }
@@ -168,7 +175,7 @@ async function play() {
   await new Promise(r => setTimeout(r, 30));
   try {
     let pool = await fullPool();
-    if (cfg.only && pool.some(e => !e.builtin)) pool = pool.filter(e => !e.builtin);
+    if (!cfg.ai) { const own = pool.filter(e => !isAI(e)); if (own.length) pool = own; } // sin IA: solo tus imágenes
     const plan = [];
     for (const e of pool) for (let k = 0; k < (cfg.counts[e.id] || 0); k++) plan.push(e);
     const total = Math.min(20, Math.max(cfg.bots, plan.length));
