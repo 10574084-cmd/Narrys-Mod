@@ -335,6 +335,30 @@ function genFlat(def, rng) {
   return { c, free };
 }
 
+/* ---------------------------- ARENA DEL JEFE (secreta) ---------------------------- */
+// Backrooms "planos": una sala enorme abierta, sin techo, solo con pilares y algunos muros bajos
+function genChocoArena(def, rng) {
+  const c = ctxNew(def, rng); border(c, 3.4);
+  for (let k = 0; k < 14; k++) { // muros cortos como cobertura
+    const horiz = rng() < 0.5, len = 3 + Math.floor(rng() * 4);
+    const x = 4 + Math.floor(rng() * (N - 10)), z = 4 + Math.floor(rng() * (N - 10));
+    if (horiz) wallRect(c, x, z, x + len, z + 1, 3.4); else wallRect(c, x, z, x + 1, z + len, 3.4);
+  }
+  for (let k = 0; k < 60; k++) { // pilares
+    const x = 2 + Math.floor(rng() * (N - 4)), z = 2 + Math.floor(rng() * (N - 4));
+    if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 0.6, hz: 0.6, parts: [box(0, def.wallH / 2, 0, 1.2, def.wallH, 1.2, def.pillar)] });
+  }
+  const free = keepLargest(c);
+  return { c, free };
+}
+
+export const CHOCO_DEF = {
+  id: 'chocoarena', name: 'Backrooms Planos', icon: '🍫', desc: 'Secreto',
+  indoor: false, wallH: 3.4, sky: 0xd8cc78, fog: [0xcfc36e, 0.012], hemi: [0xfff3b0, 0x8a7a30, 1.5],
+  tex: { wall: ['wallpaper', '#c9b458', '#b39c40'], floor: ['carpet', '#8c7c36'] },
+  lamp: { color: 0xfff0a8, int: 0, dist: 20 }, moon: 0xfff2b0, sunInt: 1.9, pillar: 0xcdbb5e, flicker: 0, drone: 55, gen: genChocoArena,
+};
+
 /* ---------------------------- ZONA DE CONSTRUCCIÓN ---------------------------- */
 function genConstruction(def, rng) {
   const c = ctxNew(def, rng); border(c, 4); const rooms = [];

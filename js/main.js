@@ -1,5 +1,5 @@
 // Menú principal, ajustes y conexión con el juego
-import { MAP_DEFS, generateMap, N, setMapSize } from './maps.js';
+import { MAP_DEFS, CHOCO_DEF, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
@@ -152,11 +152,11 @@ game.onEvent = (type, d) => {
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
     $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
-    $('overText').textContent = `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
+    $('overText').textContent = game.bossDead ? `¡Derrotaste a ODIO EL CHOCOLATE junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'end') {
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
-    $('overText').textContent = `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
+    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ODIO EL CHOCOLATE. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
     $('spectHint').textContent = ''; show('over', true);
   }
 };
@@ -176,7 +176,52 @@ $('choco').onclick = () => {
   v.currentTime = 0; v.muted = false;
   const pr = v.play(); if (pr && pr.catch) pr.catch(() => { v.muted = true; v.play().catch(finish); });
 };
-$('play').onclick = play; $('play2').onclick = play;
+/* ---------- códigos secretos ---------- */
+let lastBoss = false;
+async function chocoThumb(blob) {
+  try {
+    const url = URL.createObjectURL(blob), v = document.createElement('video'); v.muted = true; v.src = url;
+    await new Promise(r => { v.onloadeddata = r; v.onerror = r; setTimeout(r, 3000); });
+    v.currentTime = Math.min(1, (v.duration || 2) / 2);
+    await new Promise(r => { v.onseeked = r; setTimeout(r, 1500); });
+    const c = document.createElement('canvas'); c.width = c.height = 256; c.getContext('2d').drawImage(v, 0, 0, 256, 256);
+    URL.revokeObjectURL(url); return c.toDataURL('image/jpeg', 0.85);
+  } catch { /* nada */ }
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = '#5a3418'; x.fillRect(0, 0, 256, 256); x.fillStyle = '#fff'; x.font = 'bold 28px sans-serif'; x.textAlign = 'center'; x.fillText('ODIO EL', 128, 120); x.fillText('CHOCOLATE', 128, 156);
+  return c.toDataURL();
+}
+async function playBoss() {
+  lastBoss = true;
+  show('loading', true); $('loadText').textContent = 'Invocando al jefe…';
+  game.sfx.init(CHOCO_DEF.drone);
+  await new Promise(r => setTimeout(r, 30));
+  try {
+    const blob = await (await fetch('assets/odio-el-chocolate.mp4')).blob();
+    const entry = { id: 'secret-choco', name: 'ODIO EL CHOCOLATE', kind: 'video', blob, aspect: 1, thumb: await chocoThumb(blob), builtin: false };
+    $('loadText').textContent = 'Construyendo la arena…';
+    await game.start({ boss: true, def: CHOCO_DEF, map: 0, cpus: 100, bots: 1, plan: [entry], diff: 1, size: 64, dur: 600,
+      quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, [entry]);
+  } catch (err) {
+    console.error(err); show('loading', false);
+    alert('Error al iniciar el jefe: ' + (err && err.message ? err.message : err));
+    return;
+  }
+  if (title) title.pause();
+  show('menu', false); show('loading', false); show('over', false); show('hud', true); show('pause', false);
+  game.lock();
+}
+function tryCode() {
+  const raw = $('codeIn').value, code = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const msg = $('codeMsg');
+  if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; playBoss(); }
+  else if (!code) msg.textContent = '';
+  else msg.textContent = '❌ Código incorrecto';
+}
+$('codeGo').onclick = tryCode;
+$('codeIn').onkeydown = e => { if (e.key === 'Enter') tryCode(); };
+
+$('play').onclick = () => { lastBoss = false; play(); }; $('play2').onclick = () => { lastBoss = false; play(); };
 function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id)); if (id === 'scrMain') updSummary(); $('menu').scrollTop = 0; }
 document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });
 function updSummary() {
@@ -184,7 +229,7 @@ function updSummary() {
   $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
 }
 updSummary();
-$('retry').onclick = () => { show('over', false); play(); };
+$('retry').onclick = () => { show('over', false); (lastBoss ? playBoss : play)(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = toMenu;
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
 window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT') play(); });

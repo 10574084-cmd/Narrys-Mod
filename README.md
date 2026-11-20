@@ -41,3 +41,10 @@ Acércate al cuerpo de un CPU caído (los ves como puntos verdes en el minimapa)
 - Hay **22 armas** en el mapa (1 bazuca, 13 revólveres, 8 escopetas) y los CPU esperan **10 s** al iniciar antes de empezar a recoger armas.
 - **Tamaño del mapa** en Opciones: Normal (48×48), Grande (64×64) o Enorme (80×80). Al crecer el mapa también aumenta la cantidad de armas.
 - **🍫 Odio el chocolate:** al morir aparece un botón extra que reproduce el video (`assets/odio-el-chocolate.mp4`, no se puede saltar) y te revive con 5 s de protección y los nextbots cercanos desterrados. Solo una vez por partida.
+
+## 🔑 Códigos secretos
+En el menú principal hay una sección **Códigos secretos**. El código `odio el chocolate` abre un **Boss Fight**:
+- Arena «Backrooms Planos»: sala enorme abierta, sin techo, solo con pilares y muros bajos.
+- **ODIO EL CHOCOLATE** es un nextbot gigante (el video del mismo nombre, con su audio) con barra de vida; te persigue aunque no te vea y se enfurece al perder vida.
+- Tienes **100 CPUs armados** de aliados; hay 25 armas por el mapa que reaparecen a los 20 s (también las bazucas).
+- Tus disparos y los de los CPU le quitan vida (revólver 6, escopeta 14, bazuca 90). Si lo derrotas ganas la ronda.

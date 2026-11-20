@@ -32,12 +32,13 @@ function haloTexture() {
 
 const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
 const CPU_LOOT_DELAY = 10;
+const BOSS_HP = 14000;
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, shotgun: 2, bazooka: 3 };
 const WEAPONS = {
-  revolver: { name: 'REVÓLVER', ammo: 6, cd: 0.55, stun: 3.2, range: 60, tol: 1.15, grow: 0.0, beam: 0xffd24d },
-  shotgun:  { name: 'ESCOPETA', ammo: 4, cd: 0.95, stun: 4.5, range: 28, tol: 1.2, grow: 0.14, beam: 0x6bd8ff },
-  bazooka:  { name: 'BAZUCA', ammo: 2, cd: 1.3, stun: 7, range: 90, tol: 1.3, grow: 0.0, beam: 0xff5a2a, blast: 9 },
+  revolver: { name: 'REVÓLVER', dmg: 6, ammo: 6, cd: 0.55, stun: 3.2, range: 60, tol: 1.15, grow: 0.0, beam: 0xffd24d },
+  shotgun:  { name: 'ESCOPETA', dmg: 14, ammo: 4, cd: 0.95, stun: 4.5, range: 28, tol: 1.2, grow: 0.14, beam: 0x6bd8ff },
+  bazooka:  { name: 'BAZUCA', dmg: 90, ammo: 2, cd: 1.3, stun: 7, range: 90, tol: 1.3, grow: 0.0, beam: 0xff5a2a, blast: 9 },
 };
 
 function weaponModel(type) {
@@ -164,7 +165,7 @@ export class Game {
   async start(opts, memePool) {
     this.stop();
     this.opts = opts;
-    const def = this.def = MAP_DEFS[opts.map];
+    const def = this.def = opts.def || MAP_DEFS[opts.map];
     const q = this.q = Q[opts.quality] || Q.med;
     this.sens = 0.0022 * opts.sens;
     const seed = (Math.random() * 1e9) | 0;
@@ -181,12 +182,12 @@ export class Game {
     this.spawnEntities();
     this.buildMini();
     this.sfx.init(def.drone);
-    this.chocoUsed = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
+    this.chocoUsed = false; this.bossDead = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
     this.sceneT = 0; this.lampT = 0; this.stepT = 0;
     this.state = 'playing';
     this.resize();
     $('vignette').style.opacity = 0;
-    this.toast('¡CORRE! Los nextbots llegan pronto…', 3500);
+    this.toast(opts.boss ? '🍫 ¡BOSS FIGHT! Derrota a ODIO EL CHOCOLATE con tus 100 CPUs' : '¡CORRE! Los nextbots llegan pronto…', 3500);
     this.last = performance.now();
     this.raf = requestAnimationFrame(t => this.loop(t));
   }
@@ -207,7 +208,7 @@ export class Game {
     this.animated = [];
     for (const o of [this.flash, this.flash && this.flash.target, this.muzzle, this.fpModel]) if (o) this.camera.remove(o);
     this.muzzle = null; this.fpModel = null; this.weapon = null; this.pickups = []; this.fx = []; this.inv = null; this.sel = -1;
-    this.scene = null; this.cpus = []; this.bots = []; this.flash = null;
+    this.scene = null; this.cpus = []; this.bots = []; this.bossBot = null; this.flash = null;
     this.keys.clear(); this.joy.x = this.joy.y = 0;
     this.renderer.renderLists.dispose();
     $('scare').classList.add('hidden');
@@ -435,7 +436,7 @@ export class Game {
         w = c; break;
       }
       if (!w) w = W.cellWorld(pick());
-      const model = createHumanoid(this.q.cpuShadows);
+      const model = createHumanoid(this.q.cpuShadows && !o.boss);
       const tag = makeNameTag(name); model.add(tag);
       model.position.set(w.x, 0, w.z); this.scene.add(model);
       const skill = rand(0.3, 1);
@@ -458,6 +459,16 @@ export class Game {
         target: null, retarget: 0, path: null, pi: 0, repath: 0, lx: 0, lz: 0, stuckT: 0, phase: Math.random() * 6,
         state: 'patrol', stun: 0, yaw: Math.random() * 6.28, visT: Math.random() * 0.25, stateT: 0, lostT: 0, lastX: 0, lastZ: 0, goalX: null, goalZ: null });
     }
+    this.bossBot = null;
+    if (o.boss) { // jefe gigante + CPUs armados
+      const b = this.bossBot = this.bots[0];
+      Object.assign(b, { boss: true, hpMax: BOSS_HP, hp: BOSS_HP, bw: 9, bh: 9, r: 1.2, killR: 3.8, spawnAt: 6, flash: 0 });
+      b.halo.scale.set(13, 13, 1);
+      this.cpus.forEach((c, i) => {
+        const type = i < 5 ? 'bazooka' : i < 30 ? 'shotgun' : 'revolver';
+        c.gun = { type, ammo: WEAPONS[type].ammo * 2, cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
+      });
+    }
   }
 
   // 1 bazuca en todo el mapa + 8 armas más (5 revólveres y 3 escopetas)
@@ -466,7 +477,8 @@ export class Game {
     this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
     this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
     const k = (N / 48) ** 2; // más mapa = más armas
-    const list = ['bazooka', ...Array(Math.round(13 * k)).fill('revolver'), ...Array(Math.round(8 * k)).fill('shotgun')];
+    const list = this.opts.boss ? [...Array(3).fill('bazooka'), ...Array(12).fill('revolver'), ...Array(10).fill('shotgun')]
+      : ['bazooka', ...Array(Math.round(13 * k)).fill('revolver'), ...Array(Math.round(8 * k)).fill('shotgun')];
     for (const type of list) {
       let spot = null;
       for (let t = 0; t < 80 && !spot; t++) {
@@ -594,11 +606,11 @@ export class Game {
     let best = null, bt = def.range;
     for (const b of this.bots) {
       if (!b.active) continue;
-      const vx = b.x - cam.position.x, vy = 1.45 - cam.position.y, vz = b.z - cam.position.z;
+      const vx = b.x - cam.position.x, vy = (b.boss ? b.bh / 2 : 1.45) - cam.position.y, vz = b.z - cam.position.z;
       const t = vx * d.x + vy * d.y + vz * d.z;
       if (t < 0 || t > def.range) continue;
       const dist = Math.hypot(vx - d.x * t, vy - d.y * t, vz - d.z * t);
-      if (dist > def.tol + def.grow * t) continue;
+      if (dist > def.tol + def.grow * t + (b.boss ? b.bw * 0.4 : 0)) continue;
       if (!this.world.los(p.x, p.z, b.x, b.z, 0.1)) continue;
       if (t < bt) { bt = t; best = b; }
     }
@@ -615,13 +627,13 @@ export class Game {
       const t = Math.min(wt, bt);
       this.explode(cam.position.x + d.x * t, Math.max(0.3, cam.position.y + d.y * t), cam.position.z + d.z * t, def);
     } else if (best && bt <= wt) {
-      this.stunBot(best, def.stun);
-      this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200);
+      if (best.boss) this.hitBoss(best, def.dmg);
+      else { this.stunBot(best, def.stun); this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200); }
     }
     if (w.ammo <= 0) this.emptyT = 0.6;
   }
 
-  stunBot(b, secs) { b.stun = secs; b.path = null; }
+  stunBot(b, secs) { if (b.boss) return; b.stun = secs; b.path = null; }
 
   banish(b, secs) {
     const free = this.map.free, W = this.world, P = this.player;
@@ -632,6 +644,7 @@ export class Game {
       if (d > bd) { bd = d; best = c; }
     }
     b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.path = null; b.stun = secs; b.state = 'patrol'; b.goalX = null; b.target = null;
+    if (b.boss) b.stun = Math.min(secs, 2);
   }
 
   explode(x, y, z, def, by = null) {
@@ -643,6 +656,7 @@ export class Game {
     let hit = 0;
     for (const b of this.bots) {
       if (!b.active) continue;
+      if (b.boss) { if (Math.hypot(b.x - x, b.z - z) < def.blast + b.bw / 2 && def.dmg) this.hitBoss(b, def.dmg); continue; }
       if (Math.hypot(b.x - x, b.z - z) < def.blast) { this.banish(b, def.stun); hit++; this.feed(by ? `💥 ${by} desterró a ${b.name}` : `💥 ${b.name} fue desterrado por la bazuca`, !by); }
     }
     if (!by) this.toast(hit ? `¡BOOM! ${hit} nextbot${hit > 1 ? 's' : ''} desterrado${hit > 1 ? 's' : ''}` : '¡BOOM!', 1500);
@@ -655,7 +669,7 @@ export class Game {
       if (pk.taken) continue;
       if (Math.hypot(pk.x - p.x, pk.z - p.z) < 1.5) { pk.taken = true; pk.takenAt = this.time; pk.mesh.visible = false; this.giveWeapon(pk.type, pk.ammo); }
     }
-    for (const pk of this.pickups) if (pk.taken && !pk.dropped && pk.type !== 'bazooka' && this.time - pk.takenAt >= PICKUP_RESPAWN) this.respawnPickup(pk);
+    for (const pk of this.pickups) if (pk.taken && !pk.dropped && (pk.type !== 'bazooka' || this.opts.boss) && this.time - pk.takenAt >= (this.opts.boss ? 20 : PICKUP_RESPAWN)) this.respawnPickup(pk);
     for (const pk of this.pickups) if (!pk.taken) { pk.ph += dt * 2; pk.model.rotation.y += dt * 1.6; pk.model.position.y = 1.0 + Math.sin(pk.ph) * 0.12; }
     // disparo
     if (this.fireReq) { this.fireReq = false; if (w) this.fire(); }
@@ -790,8 +804,9 @@ export class Game {
     const dp = Math.hypot(c.x - this.player.x, c.z - this.player.z);
     if (dp < 45) this.sfx.burst(g.type === 'bazooka' ? 0.4 : 0.15, g.type === 'bazooka' ? 260 : 1400, clamp(1 - dp / 45, 0.05, 1) * 0.6, 0.7, g.type === 'bazooka' ? 'lowpass' : 'bandpass');
     const p = clamp(1.0 - d * 0.009 * (1.3 - c.skill), 0.45, 0.97); // más precisión cuanto más hábil y más cerca
-    if (Math.random() < p) {
-      if (g.type === 'bazooka') this.explode(b.x, 1.4, b.z, def, c.name);
+    if (Math.random() < (b.boss ? Math.min(0.95, p + 0.25) : p)) {
+      if (b.boss && g.type !== 'bazooka') this.hitBoss(b, def.dmg);
+      else if (g.type === 'bazooka') this.explode(b.x, b.boss ? 3 : 1.4, b.z, def, c.name);
       else { this.stunBot(b, def.stun); this.feed(`🔫 ${c.name} aturdió a ${b.name}`); }
     }
     if (g.ammo <= 0) { c.gun = null; this.setCpuGunModel(c, null); }
@@ -834,7 +849,7 @@ export class Game {
     const g = c.gun && c.gun.ammo > 0 ? c.gun : null;
     if (reacted && g && !(seen.stun > 0)) {
       const def = WEAPONS[g.type];
-      if (sd >= (g.type === 'bazooka' ? 6 : 0) && sd <= def.range * 0.95 && !(sd < 4 && g.cd > 0)) { // dispara a cualquier distancia; si está muy cerca y recargando, corre
+      if (sd >= (g.type === 'bazooka' ? 6 : 0) && sd <= def.range * 0.95 && !(sd < (seen.boss ? 9 : 4) && g.cd > 0)) { // dispara a cualquier distancia; si está muy cerca y recargando, corre
         c.mode = 'fight'; c.path = null; c.aim += dt;
         const dx = seen.x - c.x, dz = seen.z - c.z; let da = Math.atan2(dx, dz) - c.yaw; da = Math.atan2(Math.sin(da), Math.cos(da));
         c.yaw += da * Math.min(1, dt * 12);
@@ -979,6 +994,7 @@ export class Game {
   updateBot(b, dt) {
     if (!b.active) { if (this.time >= b.spawnAt) this.activateBot(b); return; }
     if (b.stun > 0) { b.stun -= dt; return; }
+    if (b.boss) return this.updateBoss(b, dt);
     const P = this.player, sp = this.botSpeed();
     b.stateT += dt;
 
@@ -1030,6 +1046,37 @@ export class Game {
     for (const e of [P, ...this.cpus]) {
       if (e.alive && Math.hypot(e.x - b.x, e.z - b.z) < b.r + e.r + 0.35) this.kill(e, b);
     }
+  }
+
+  // jefe: persigue al jugador/CPU más cercano (no necesita verlo), se enfurece al perder vida
+  updateBoss(b, dt) {
+    const P = this.player, sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
+    b.retarget -= dt;
+    if (b.retarget <= 0 || !b.target || !b.target.alive) {
+      b.retarget = 0.6; let best = null, bd = 1e9;
+      for (const e of [P, ...this.cpus]) { if (!e.alive) continue; const d = Math.hypot(e.x - b.x, e.z - b.z); if (d < bd) { bd = d; best = e; } }
+      b.target = best;
+    }
+    b.state = 'chase';
+    if (b.target) { b.lastX = b.target.x; b.lastZ = b.target.z; this.botGo(b, b.target.x, b.target.z, sp, dt); }
+    for (const e of [P, ...this.cpus]) {
+      if (e.alive && Math.hypot(e.x - b.x, e.z - b.z) < b.killR + e.r) this.kill(e, b);
+    }
+  }
+
+  hitBoss(b, dmg) {
+    if (!b.active || b.hp <= 0) return;
+    b.hp = Math.max(0, b.hp - dmg); b.flash = 0.12;
+    if (b.hp <= 0) this.bossDie(b);
+  }
+
+  bossDie(b) {
+    b.active = false; b.mesh.visible = false; b.halo.visible = false; this.bossDead = true;
+    this.explode(b.x, 4, b.z, { blast: 0, stun: 0, dmg: 0 });
+    const m = b.meme; if (m && m.video) m.video.pause();
+    this.sfx.setThreat(0); this.sfx.win();
+    this.feed('🍫 ¡ODIO EL CHOCOLATE fue derrotado!', true); this.toast('🍫 ¡JEFE DERROTADO!', 3500);
+    setTimeout(() => this.endRound(), 1800);
   }
 
   separate() {
@@ -1125,14 +1172,16 @@ export class Game {
     for (const b of this.bots) {
       if (!b.active) continue;
       b.phase += dt * 7;
-      b.mesh.material.color.setHex(b.stun > 0 ? 0x6f9bff : 0xffffff);
+      if (b.flash > 0) b.flash -= dt;
+      b.mesh.material.color.setHex(b.flash > 0 ? 0xff7070 : b.stun > 0 ? 0x6f9bff : 0xffffff);
+      const bh = b.bh || 2.5, cy = b.boss ? bh / 2 + 0.3 : 1.45;
       b.halo.material.opacity = b.state === 'chase' ? 1 : b.state === 'search' ? 0.6 : 0.3;
       const ang = Math.atan2(cam.position.x - b.x, cam.position.z - b.z);
       const sc = 1 + Math.sin(b.phase * 1.3) * 0.05;
-      b.mesh.position.set(b.x, 1.45 + Math.sin(b.phase) * 0.08, b.z);
-      b.mesh.rotation.set(0, ang, Math.sin(b.phase * 0.7) * 0.06); b.mesh.scale.set(b.bw * sc, 2.5 * sc, 1);
+      b.mesh.position.set(b.x, cy + Math.sin(b.phase) * 0.08, b.z);
+      b.mesh.rotation.set(0, ang, Math.sin(b.phase * 0.7) * 0.06); b.mesh.scale.set(b.bw * sc, bh * sc, 1);
       const dir = new THREE.Vector3(b.x - cam.position.x, 0, b.z - cam.position.z).normalize().multiplyScalar(0.12);
-      b.halo.position.set(b.x + dir.x, 1.45, b.z + dir.z);
+      b.halo.position.set(b.x + dir.x, cy, b.z + dir.z);
       const d = Math.hypot(b.x - p.x, b.z - p.z);
       if (p.alive) nearest = Math.min(nearest, b.stun > 0 ? d * 3 : b.state === 'chase' && b.target === p ? d : b.state === 'search' ? d * 1.6 : d * 2.5);
       act.push({ b, d });
@@ -1193,6 +1242,9 @@ export class Game {
 
   /* ------------------------------ HUD ------------------------------ */
   updateHud() {
+    const bb = $('bossBar'), bo = this.bossBot;
+    if (bo && bo.active) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp)} / ${bo.hpMax}`; }
+    else bb.classList.add('hidden');
     $('hudTime').textContent = fmt(Math.max(0, this.round - this.time));
     $('hudAlive').textContent = `👥 ${this.alive()} / ${this.cpus.length + 1}`;
     const sig = this.inv ? this.inv.map((s, i) => (s ? s.type + s.ammo : '-') + (i === this.sel ? '*' : '')).join('|') : '';

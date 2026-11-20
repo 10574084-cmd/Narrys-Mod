@@ -37,6 +37,7 @@
           <button class="menuBtn" data-go="scrGame">🗺️ Mapa y partida</button>
           <button class="menuBtn" data-go="scrOpts">⚙️ Opciones</button>
           <button class="menuBtn" data-go="scrMemes">🖼️ Memes / nextbots</button>
+          <button class="menuBtn" data-go="scrCodes">🔑 Códigos secretos</button>
         </div>
         <div id="mapChips" class="chips"></div>
         <p class="hint" id="summary" style="text-align:center"></p>
@@ -101,6 +102,20 @@
         <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>
 
+      <!-- CÓDIGOS SECRETOS -->
+      <div id="scrCodes" class="screen hidden">
+        <section class="panel narrow">
+          <h2>🔑 Códigos secretos</h2>
+          <p class="hint">Escribe un código para desbloquear algo especial.</p>
+          <div class="row">
+            <input id="codeIn" type="text" placeholder="Escribe el código…" autocomplete="off" spellcheck="false" style="flex:1">
+            <button id="codeGo" class="btn small" type="button">Activar</button>
+          </div>
+          <p class="hint" id="codeMsg"></p>
+        </section>
+        <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
+      </div>
+
       <!-- MEMES -->
       <div id="scrMemes" class="screen hidden">
         <section class="panel narrow">
@@ -129,6 +144,7 @@
   <!-- HUD -->
   <div id="hud" class="hidden">
     <div id="hudTop"><span id="hudTime">4:00</span><span id="hudAlive">👥 0</span></div>
+    <div id="bossBar" class="hidden"><div class="bossName">🍫 ODIO EL CHOCOLATE <span id="bossHp"></span></div><div class="bossTrack"><div id="bossFill"></div></div></div>
     <div id="toast"></div>
     <div id="feed"></div>
     <canvas id="mini" width="150" height="150"></canvas>
