@@ -142,11 +142,13 @@ async function play() {
 
 game.onEvent = (type, d) => {
   if (type === 'pause') {
+    if (!$('over').classList.contains('hidden') || !$('chocoBox').classList.contains('hidden')) return; // ya hay una pantalla encima
     if (game.state === 'playing' || game.state === 'dead') { game.pause(); show('pause', true); }
   } else if (type === 'dead') {
     $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
+    show('choco', game.state === 'dead' && !game.chocoUsed);
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
     $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
@@ -159,6 +161,21 @@ game.onEvent = (type, d) => {
   }
 };
 
+$('choco').onclick = () => {
+  const box = $('chocoBox'), v = $('chocoVid');
+  if (game.chocoUsed || game.state !== 'dead') return;
+  show('over', false); show('choco', false); game.pause(); show('chocoBox', true);
+  let done = false;
+  const finish = () => {
+    if (done) return; done = true; v.onended = v.onerror = null; v.pause(); show('chocoBox', false);
+    game.unpause(); // vuelve al estado 'dead' en el que estaba
+    if (game.revivePlayer()) { show('over', false); game.lock(); }
+    else show('over', true);
+  };
+  v.onended = finish; v.onerror = finish; $('chocoSkip').onclick = finish;
+  v.currentTime = 0; v.muted = false;
+  const pr = v.play(); if (pr && pr.catch) pr.catch(() => { v.muted = true; v.play().catch(finish); });
+};
 $('play').onclick = play; $('play2').onclick = play;
 function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id)); if (id === 'scrMain') updSummary(); $('menu').scrollTop = 0; }
 document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });

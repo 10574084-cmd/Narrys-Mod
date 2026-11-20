@@ -181,7 +181,7 @@ export class Game {
     this.spawnEntities();
     this.buildMini();
     this.sfx.init(def.drone);
-    this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
+    this.chocoUsed = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
     this.sceneT = 0; this.lampT = 0; this.stepT = 0;
     this.state = 'playing';
     this.resize();
@@ -716,6 +716,7 @@ export class Game {
   update(dt) {
     if (this.state === 'paused') return;
     this.time += dt;
+    if (this.player.invuln > 0) this.player.invuln -= dt;
     this.updatePlayer(dt);
     this.updateWeapons(dt);
     this.updateRevive(dt);
@@ -1066,6 +1067,19 @@ export class Game {
         if (this.state === 'dead' || this.state === 'ended') this.onEvent('dead', { by: bot.name, place: this.place, total: this.cpus.length + 1, time: this.time });
       }, 1700);
     }
+  }
+
+  // revive al jugador (botón "Odio el chocolate"): una sola vez por partida
+  revivePlayer() {
+    const p = this.player;
+    if (p.alive || this.chocoUsed || this.state === 'ended') return false;
+    this.chocoUsed = true;
+    p.alive = true; p.invuln = 5; p.stamina = 1; p.tired = false; p.y = 0; p.vy = 0;
+    this.state = 'playing'; this.killer = null;
+    for (const b of this.bots) if (b.active && Math.hypot(b.x - p.x, b.z - p.z) < 30) this.banish(b, 6); // los nextbots cercanos se van
+    $('scare').classList.add('hidden'); $('vignette').style.opacity = 0;
+    this.sfx.revive(); this.toast('🍫 ¡Reviviste! Tienes 5 s de protección', 2500); this.feed('🍫 Reviviste con "Odio el chocolate"', true);
+    return true;
   }
 
   endRound() {

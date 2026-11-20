@@ -147,3 +147,11 @@ body.touch #hotbar { bottom: 92px; }
 #reviveBar { margin-top: 6px; width: 220px; height: 8px; background: rgba(255,255,255,.15); border-radius: 6px; overflow: hidden; }
 #reviveFill { height: 100%; width: 0; background: linear-gradient(90deg, #3ddc84, #b9ffd4); }
 #btnRevive { position: absolute; right: 200px; bottom: 100px; width: 64px; height: 64px; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(61,220,132,.8); background: rgba(61,220,132,.22); color: #fff; font-size: 1.6rem; }
+
+/* revivir con "Odio el chocolate" */
+.btn.choco { background: #5a3418; border-color: #a8662b; color: #ffe2c2; }
+.btn.choco:hover { background: #7a4720; }
+#chocoBox { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; align-items: center; justify-content: center; }
+#chocoBox.hidden { display: none; }
+#chocoVid { max-width: 100%; max-height: 100%; width: auto; height: 100%; aspect-ratio: 1 / 1; object-fit: contain; }
+#chocoSkip { position: absolute; right: 16px; bottom: 16px; padding: 8px 14px; border-radius: 8px; border: 1px solid #fff5; background: #0008; color: #fff; font: inherit; cursor: pointer; }
