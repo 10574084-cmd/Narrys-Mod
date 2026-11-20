@@ -29,3 +29,7 @@ El fondo del menú es una escena 3D en vivo: humanoides corriendo y nextbots per
 
 ## IA de los nextbots
 Los nextbots ya no saben dónde estás: **solo te persiguen cuando te ven** (distancia, línea de visión y campo de visión de ~150° mientras patrullan; alcance 30–45 m según dificultad). Si te pierden, van al último sitio donde te vieron, buscan unos segundos y **se rinden** y vuelven a patrullar. Los nextbots no se avisan entre sí.
+
+## Reaparición de armas y CPUs con armas
+- Las armas recogidas (por ti o por un CPU) **reaparecen a los 60 s** en otro punto del mapa. La **bazuca no reaparece**.
+- Los CPU buscan y recogen armas cuando no hay nextbots cerca; con munición se plantan a disparar (revólver, escopeta o bazuca) en vez de dejarse atrapar. Huyen mejor: evitan correr hacia los nextbots, prefieren esconderse fuera de su vista, corren a tope solo si el peligro está cerca y evitan pasear por zonas con nextbots.
