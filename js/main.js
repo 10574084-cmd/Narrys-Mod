@@ -11,6 +11,7 @@ const KEY = 'narrysmod_cfg_v1';
 const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, dur: 240, quality: isTouch ? 'med' : 'high', size: 48, fov: 80, sens: 10, name: 'Jugador', only: false, counts: {} },
   (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })());
 let title = null;
+cfg.choco = Object.assign({ size: 9, hp: 14000 }, cfg.choco || {});
 const UKEY = 'narrysmod_unlocks_v1';
 const unlocks = (() => { try { return JSON.parse(localStorage.getItem(UKEY) || '{}'); } catch { return {}; } })();
 const saveUnl = () => { try { localStorage.setItem(UKEY, JSON.stringify(unlocks)); } catch { /* nada */ } };
@@ -100,6 +101,11 @@ async function renderMemes() {
     const [minus, plus] = d.querySelectorAll('button');
     const set = v => { cfg.counts[e.id] = Math.max(0, Math.min(10, v)); save(); d.querySelector('b').textContent = cfg.counts[e.id]; d.classList.toggle('on', cfg.counts[e.id] > 0); };
     minus.onclick = () => set((cfg.counts[e.id] || 0) - 1); plus.onclick = () => set((cfg.counts[e.id] || 0) + 1);
+    if (e.id === 'secret-choco') { // engranaje: tamaño y vida del jefe
+      const gear = document.createElement('button'); gear.className = 'gear'; gear.type = 'button'; gear.title = 'Tamaño y vida'; gear.textContent = '⚙';
+      gear.onclick = ev => { ev.stopPropagation(); openChocoCfg(); };
+      d.appendChild(gear);
+    }
     if (e.dbId != null) {
       const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.type = 'button';
       x.onclick = async () => { await removeMedia(e.dbId); delete cfg.counts[e.id]; save(); renderMemes(); };
@@ -108,6 +114,27 @@ async function renderMemes() {
     list.appendChild(d);
   }
 }
+/* ---------- ajustes del nextbot jefe (tamaño y vida) ---------- */
+const HP_MAX = 10000000, hpFromR = r => Math.round(Math.exp(Math.log(HP_MAX) * (r / 1000))), rFromHp = hp => Math.round(Math.log(Math.max(1, hp)) / Math.log(HP_MAX) * 1000);
+const fmtN = n => Number(n).toLocaleString('es');
+function syncChocoCfg(from) {
+  const ch = cfg.choco;
+  if (from === 'r') ch.hp = hpFromR(+$('ccHpR').value);
+  else if (from === 'n') ch.hp = Math.min(HP_MAX, Math.max(1, Math.round(+$('ccHp').value) || 1));
+  else if (typeof from === 'number') ch.hp = from;
+  ch.size = +$('ccSize').value; save();
+  if (from !== 'r') $('ccHpR').value = rFromHp(ch.hp);
+  if (from !== 'n') $('ccHp').value = ch.hp;
+  $('ccSizeV').textContent = ch.size + ' m de alto'; $('ccHpV').textContent = fmtN(ch.hp);
+}
+function openChocoCfg() { $('ccSize').value = cfg.choco.size; syncChocoCfg(cfg.choco.hp); show('chocoCfg', true); }
+for (const v of [100, 14000, 100000, 1000000, 10000000]) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small ghost'; b.textContent = fmtN(v); b.onclick = () => syncChocoCfg(v); $('ccPresets').appendChild(b);
+}
+$('ccSize').oninput = () => syncChocoCfg(); $('ccHpR').oninput = () => syncChocoCfg('r'); $('ccHp').oninput = () => syncChocoCfg('n');
+$('ccClose').onclick = () => show('chocoCfg', false);
+$('chocoCfg').addEventListener('click', e => { if (e.target === $('chocoCfg')) show('chocoCfg', false); });
+
 async function addFiles(files) {
   for (const f of files) { try { await addMedia(f); } catch (err) { alert('No se pudo guardar "' + f.name + '": ' + (err && err.message || err)); } }
   renderMemes();
@@ -149,7 +176,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, diff: cfg.diff, size: cfg.size, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -232,7 +259,7 @@ async function playBoss() {
   try {
     const entry = await getChocoEntry();
     $('loadText').textContent = 'Construyendo la arena…';
-    await game.start({ boss: true, def: CHOCO_DEF, map: 0, cpus: 100, bots: 1, plan: [entry], diff: 1, size: 64, dur: 600,
+    await game.start({ boss: true, choco: { size: 9, hp: 14000 }, def: CHOCO_DEF, map: 0, cpus: 100, bots: 1, plan: [entry], diff: 1, size: 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, [entry]);
   } catch (err) {
     console.error(err); show('loading', false);

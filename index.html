@@ -144,7 +144,7 @@
   <!-- HUD -->
   <div id="hud" class="hidden">
     <div id="hudTop"><span id="hudTime">4:00</span><span id="hudAlive">👥 0</span></div>
-    <div id="bossBar" class="hidden"><div class="bossName">🍫 ODIO EL CHOCOLATE <span id="bossHp"></span></div><div class="bossTrack"><div id="bossFill"></div></div></div>
+    <div id="bossBar" class="hidden"><div class="bossName">🍫 <span id="bossNm">ODIO EL CHOCOLATE</span> <span id="bossHp"></span></div><div class="bossTrack"><div id="bossFill"></div></div></div>
     <div id="toast"></div>
     <div id="feed"></div>
     <canvas id="mini" width="150" height="150"></canvas>
@@ -190,6 +190,18 @@
       <p class="hint hidden" id="unlockMsg"></p>
       <div id="loseLink" class="hidden"><p>Perdiste… <b>toca este botón</b> 👇</p><a class="btn" href="https://10574084-cmd.github.io/OdioElTrojano.org/player.html" target="_blank" rel="noopener noreferrer">👉 TOCA AQUÍ</a></div>
       <p class="hint" id="spectHint"></p>
+    </div>
+  </div>
+
+  <div id="chocoCfg" class="hidden">
+    <div class="card">
+      <h2>⚙️ ODIO EL CHOCOLATE</h2>
+      <label>Tamaño <b id="ccSizeV"></b><input id="ccSize" type="range" min="2" max="40" step="1"></label>
+      <label>Vida <b id="ccHpV"></b><input id="ccHpR" type="range" min="0" max="1000" step="1"></label>
+      <div class="row"><input id="ccHp" type="number" min="1" max="10000000" step="1" style="flex:1"><span class="hint" style="margin:0">máx. 10.000.000</span></div>
+      <div class="row" id="ccPresets"></div>
+      <p class="hint">Así aparecerá cuando lo uses como nextbot: gigante, con barra de vida, y las armas le quitan vida (revólver 6, escopeta 14, bazuca 90).</p>
+      <div class="row"><button id="ccClose" class="btn" type="button">Listo</button></div>
     </div>
   </div>
 

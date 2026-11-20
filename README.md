@@ -53,3 +53,4 @@ En el menú principal hay una sección **Códigos secretos**. El código `odio e
 ## 🎯 Mira del arma y 🔓 desbloqueos
 - **Apuntar:** mantén el **clic derecho** (en celular, el botón 🎯) para hacer zoom con mira, menos sensibilidad y más precisión al disparar. El arma equipada también muestra una mira en cruz.
 - **Al ganar el boss fight** (tú o tus CPUs) se desbloquean, de forma permanente en tu navegador: el nextbot **ODIO EL CHOCOLATE** (aparece en «Memes / nextbots» para usarlo en cualquier mapa) y el mapa **Backrooms Planos** (en «Mapa y partida»).
+- **ODIO EL CHOCOLATE como nextbot en cualquier mapa:** una vez desbloqueado, aparece gigante como el jefe, te persigue aunque no lo veas y tiene **barra de vida**. En «Memes / nextbots» tiene un engranaje ⚙ para elegir su **tamaño** (2–40 m) y su **vida** (1 a 10.000.000). Las armas le quitan vida y, al derrotarlo, no vuelve. Puedes poner varios.

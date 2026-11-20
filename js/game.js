@@ -379,7 +379,7 @@ export class Game {
     this.memes = new Map(); this.animated = [];
     for (const e of plan) {
       if (this.memes.has(e.id)) continue;
-      const m = { name: e.name, aspect: e.aspect || 1, scare: e.thumb, update: null, dispose: null, tex: null };
+      const m = { id: e.id, name: e.name, aspect: e.aspect || 1, scare: e.thumb, update: null, dispose: null, tex: null };
       try {
         if (e.kind === 'canvas') { m.tex = new THREE.CanvasTexture(e.canvas); m.scare = e.canvas.toDataURL(); }
         else {
@@ -467,10 +467,12 @@ export class Game {
         state: 'patrol', stun: 0, yaw: Math.random() * 6.28, visT: Math.random() * 0.25, stateT: 0, lostT: 0, lastX: 0, lastZ: 0, goalX: null, goalZ: null });
     }
     this.bossBot = null;
-    if (o.boss) { // jefe gigante + CPUs armados
-      const b = this.bossBot = this.bots[0];
-      Object.assign(b, { boss: true, hpMax: BOSS_HP, hp: BOSS_HP, bw: 9, bh: 9, r: 1.2, killR: 3.8, spawnAt: 6, flash: 0 });
-      b.halo.scale.set(13, 13, 1);
+    // ODIO EL CHOCOLATE (donde esté en el plan) es un jefe gigante con vida; tamaño y vida salen de las opciones
+    const cc = o.choco || { size: 9, hp: BOSS_HP };
+    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-choco') this.makeBoss(b, cc.size, cc.hp);
+    this.bossBot = this.bots.find(b => b.boss) || null;
+    if (o.boss && this.bossBot) this.bossBot.spawnAt = 6;
+    if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
         const type = i < 5 ? 'bazooka' : i < 30 ? 'shotgun' : 'revolver';
         c.gun = { type, ammo: WEAPONS[type].ammo * 2, cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
@@ -1010,6 +1012,7 @@ export class Game {
   }
 
   updateBot(b, dt) {
+    if (b.dead) return; // jefe derrotado: no vuelve
     if (!b.active) { if (this.time >= b.spawnAt) this.activateBot(b); return; }
     if (b.stun > 0) { b.stun -= dt; return; }
     if (b.boss) return this.updateBoss(b, dt);
@@ -1066,6 +1069,12 @@ export class Game {
     }
   }
 
+  makeBoss(b, size, hp) {
+    size = clamp(+size || 9, 2, 40); hp = clamp(Math.round(+hp || BOSS_HP), 1, 10000000);
+    Object.assign(b, { boss: true, hpMax: hp, hp, bw: size, bh: size, r: Math.min(1.2, 0.35 + 0.09 * size), killR: Math.max(1.2, size * 0.42), flash: 0 });
+    b.halo.scale.set(size * 1.45, size * 1.45, 1);
+  }
+
   // jefe: persigue al jugador/CPU más cercano (no necesita verlo), se enfurece al perder vida
   updateBoss(b, dt) {
     const P = this.player, sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
@@ -1089,12 +1098,12 @@ export class Game {
   }
 
   bossDie(b) {
-    b.active = false; b.mesh.visible = false; b.halo.visible = false; this.bossDead = true;
-    this.explode(b.x, 4, b.z, { blast: 0, stun: 0, dmg: 0 });
-    const m = b.meme; if (m && m.video) m.video.pause();
-    this.sfx.setThreat(0); this.sfx.win();
+    b.active = false; b.dead = true; b.mesh.visible = false; b.halo.visible = false;
+    this.explode(b.x, b.bh / 2, b.z, { blast: 0, stun: 0, dmg: 0 });
+    const m = b.meme; if (m && m.video && !this.bots.some(o => o !== b && o.active && o.meme === m)) m.video.pause();
+    this.sfx.win();
     this.feed('🍫 ¡ODIO EL CHOCOLATE fue derrotado!', true); this.toast('🍫 ¡JEFE DERROTADO!', 3500);
-    setTimeout(() => this.endRound(), 1800);
+    if (this.opts.boss) { this.bossDead = true; this.sfx.setThreat(0); setTimeout(() => this.endRound(), 1800); } // en el boss fight termina la ronda
   }
 
   separate() {
@@ -1260,8 +1269,9 @@ export class Game {
 
   /* ------------------------------ HUD ------------------------------ */
   updateHud() {
-    const bb = $('bossBar'), bo = this.bossBot;
-    if (bo && bo.active) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp)} / ${bo.hpMax}`; }
+    const bb = $('bossBar'); let bo = null, bd = 1e9; // barra del jefe activo más cercano
+    for (const b of this.bots) if (b.boss && b.active && b.hp > 0) { const d = Math.hypot(b.x - this.player.x, b.z - this.player.z); if (d < bd) { bd = d; bo = b; } }
+    if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name; }
     else bb.classList.add('hidden');
     $('hudTime').textContent = fmt(Math.max(0, this.round - this.time));
     $('hudAlive').textContent = `👥 ${this.alive()} / ${this.cpus.length + 1}`;

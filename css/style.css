@@ -160,7 +160,7 @@ body.touch #hotbar { bottom: 92px; }
 #bossBar { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); width: min(520px, 70vw); text-align: center; pointer-events: none; }
 #bossBar.hidden { display: none; }
 .bossName { font-weight: 800; letter-spacing: .08em; text-shadow: 0 2px 6px #000; margin-bottom: 4px; font-size: 14px; }
-.bossName span { opacity: .75; font-weight: 600; font-size: 12px; margin-left: 8px; }
+#bossHp { opacity: .75; font-weight: 600; font-size: 12px; margin-left: 8px; }
 .bossTrack { height: 14px; border: 2px solid #000c; border-radius: 8px; background: #0009; overflow: hidden; }
 #bossFill { height: 100%; width: 100%; background: linear-gradient(90deg, #7a3a14, #d2691e); transition: width .15s; }
 
@@ -176,3 +176,14 @@ body.touch #hotbar { bottom: 92px; }
 #cross.armed.aim { width: 46px; height: 46px; margin: -23px; border: 2px solid rgba(255,255,255,.85); border-radius: 50%;
   background: radial-gradient(circle, #ff3b3b 0 2px, transparent 3px); filter: drop-shadow(0 0 3px #000); }
 #btnAim { position: absolute; right: 200px; bottom: 140px; width: 64px; height: 64px; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(120,200,255,.7); background: rgba(120,200,255,.2); color: #fff; font-size: 1.5rem; }
+
+/* ajustes del nextbot jefe */
+.meme .gear { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: rgba(0,0,0,.75); color: #fff; font-size: 15px; cursor: pointer; line-height: 1; }
+.meme .gear:hover { background: var(--red); }
+#chocoCfg { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; padding: 16px; }
+#chocoCfg.hidden { display: none; }
+#chocoCfg .card { width: min(440px, 100%); max-height: 92vh; overflow: auto; }
+#chocoCfg label { display: block; margin: 10px 0; }
+#chocoCfg label input[type=range] { width: 100%; }
+#chocoCfg .row { margin-top: 8px; flex-wrap: wrap; }
+#chocoCfg .row .btn { padding: 6px 10px; }
