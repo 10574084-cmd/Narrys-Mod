@@ -98,6 +98,15 @@ export const TEX = {
     speckle(x, 256, 256, 4000, 0.15, '255,255,255');
     return tex(c, 5, 5);
   },
+  // suelo/paredes a cuadros marrones y crema (estilo colina verde)
+  checker(a = '#5a3416', b = '#b88a45') {
+    const [c, x] = mk();
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = (i + j) % 2 ? a : b; x.fillRect(i * 64, j * 64, 64, 64); }
+    speckle(x, 256, 256, 2500, 0.18);
+    x.strokeStyle = 'rgba(0,0,0,0.25)'; x.lineWidth = 2;
+    for (let i = 0; i <= 256; i += 64) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(256, i); x.stroke(); }
+    return tex(c, 3, 3);
+  },
   grass(base = '#1f3a1c') {
     const [c, x] = mk();
     x.fillStyle = base; x.fillRect(0, 0, 256, 256);

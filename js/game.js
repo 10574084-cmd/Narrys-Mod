@@ -33,7 +33,7 @@ function haloTexture() {
 
 const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
 const CPU_LOOT_DELAY = 10;
-const BOSS_HP = 14000;
+const BOSS_HP = 14000, EXE_HP = 5000;
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, smg: 1.5, shotgun: 2, sniper: 2.5, grenade: 2.8, bazooka: 3 };
 const WEAPONS = {
@@ -297,7 +297,7 @@ export class Game {
     this.state = 'playing';
     this.resize();
     $('vignette').style.opacity = 0;
-    this.toast(opts.boss ? '🍫 ¡BOSS FIGHT! Derrota a ODIO EL CHOCOLATE con tus 100 CPUs' : '¡CORRE! Los nextbots llegan pronto…', 3500);
+    this.toast(opts.boss ? (opts.bossMsg || '🍫 ¡BOSS FIGHT! Derrota a ODIO EL CHOCOLATE con tus 100 CPUs') : '¡CORRE! Los nextbots llegan pronto…', 3500);
     this.last = performance.now();
     this.raf = requestAnimationFrame(t => this.loop(t));
   }
@@ -409,6 +409,24 @@ export class Game {
       });
       inst.castShadow = !emi && q.shadows; inst.receiveShadow = !emi;
       scene.add(inst);
+    }
+
+    // animales muertos (sprites del mapa Green Hills .EXE): los de pie miran siempre a la cámara, los caídos van en el suelo
+    if (map.sprites && map.sprites.length) {
+      const loader = new THREE.TextureLoader(), texs = [];
+      const AN = [[60, 72, 1.0], [60, 52, 0.8], [72, 80, 1.1], [80, 80, 1.0], [72, 80, 1.1], [80, 176, 2.0], [136, 196, 1.9], [196, 76, 1.5], [188, 100, 1.6]]; // ancho, alto (px), alto en metros
+      for (const sp of map.sprites) {
+        const [pw, ph, hm] = AN[sp.k] || AN[0];
+        if (!texs[sp.k]) { const t = loader.load(`assets/exe/a${sp.k}.png`); t.magFilter = t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace; texs[sp.k] = t; }
+        const w = hm * pw / ph;
+        if (sp.k >= 7) {
+          const m = new THREE.Mesh(new THREE.PlaneGeometry(w, hm), new THREE.MeshBasicMaterial({ map: texs[sp.k], transparent: true, alphaTest: 0.4, side: THREE.DoubleSide, color: 0xcc9a90 }));
+          m.rotation.set(-Math.PI / 2, 0, sp.rot); m.position.set(sp.x, 0.07, sp.z); scene.add(m);
+        } else {
+          const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: texs[sp.k], alphaTest: 0.4, color: 0xcc9a90 }));
+          m.center.set(0.5, 0); m.scale.set(w, hm, 1); m.position.set(sp.x, 0, sp.z); scene.add(m);
+        }
+      }
     }
 
     // luz de la luna (exteriores) con sombras que siguen al jugador
@@ -573,8 +591,10 @@ export class Game {
     // ODIO EL CHOCOLATE (donde esté en el plan) es un jefe gigante con vida; tamaño y vida salen de las opciones
     const cc = o.choco || { size: 9, hp: BOSS_HP };
     for (const b of this.bots) if (b.meme && b.meme.id === 'secret-choco') this.makeBoss(b, cc.size, cc.hp);
+    // Sonic.exe y sus amigos: jefes con 5000 de vida y el tamaño de un nextbot normal
+    for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
     this.bossBot = this.bots.find(b => b.boss) || null;
-    if (o.boss && this.bossBot) this.bossBot.spawnAt = 6;
+    if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3; });
     if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
         const type = i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
@@ -1228,8 +1248,9 @@ export class Game {
     this.explode(b.x, b.bh / 2, b.z, { blast: 0, stun: 0, dmg: 0 });
     const m = b.meme; if (m && m.video && !this.bots.some(o => o !== b && o.active && o.meme === m)) m.video.pause();
     this.sfx.win();
-    this.feed('🍫 ¡ODIO EL CHOCOLATE fue derrotado!', true); this.toast('🍫 ¡JEFE DERROTADO!', 3500);
-    if (this.opts.boss) { this.bossDead = true; this.sfx.setThreat(0); setTimeout(() => this.endRound(), 1800); } // en el boss fight termina la ronda
+    const ico = String(b.meme && b.meme.id).startsWith('secret-exe-') ? '💀' : '🍫';
+    this.feed(`${ico} ¡${b.name} fue derrotado!`, true); this.toast(`${ico} ¡JEFE DERROTADO!`, 3500);
+    if (this.opts.boss && this.bots.every(x => !x.boss || x.dead)) { this.bossDead = true; this.sfx.setThreat(0); setTimeout(() => this.endRound(), 1800); } // en el boss fight termina la ronda
   }
 
   separate() {
@@ -1401,7 +1422,7 @@ export class Game {
   updateHud() {
     const bb = $('bossBar'); let bo = null, bd = 1e9; // barra del jefe activo más cercano
     for (const b of this.bots) if (b.boss && b.active && b.hp > 0) { const d = Math.hypot(b.x - this.player.x, b.z - this.player.z); if (d < bd) { bd = d; bo = b; } }
-    if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name; }
+    if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name; $('bossIco').textContent = String(bo.meme && bo.meme.id).startsWith('secret-exe-') ? '💀' : '🍫'; }
     else bb.classList.add('hidden');
     $('hudTime').textContent = fmt(Math.max(0, this.round - this.time));
     $('hudAlive').textContent = `👥 ${this.alive()} / ${this.cpus.length + 1}`;

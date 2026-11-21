@@ -1,5 +1,5 @@
 // Menú principal, ajustes y conexión con el juego
-import { MAP_DEFS, CHOCO_DEF, generateMap, N, setMapSize } from './maps.js';
+import { MAP_DEFS, CHOCO_DEF, GREEN_DEF, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
@@ -14,7 +14,7 @@ const cfg = Object.assign({ map: 0, cpus: isTouch ? 10 : 20, bots: 3, diff: 1, d
   (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } })());
 let title = null;
 if (cfg.ai === undefined) cfg.ai = !cfg.only; // antes: «usar solo mis imágenes»
-const isAI = e => !!e.builtin && e.id !== 'secret-choco'; // los de IA = los que hice yo (el jefe no cuenta)
+const isAI = e => !!e.builtin && !String(e.id).startsWith('secret-'); // los de IA = los que hice yo (el jefe no cuenta)
 cfg.choco = Object.assign({ size: 9, hp: 14000 }, cfg.choco || {});
 cfg.perf = Object.assign({}, DEFAULT_PERF, cfg.perf || {});
 cfg.extra = Object.assign({}, DEFAULT_EXTRA, cfg.extra || {});
@@ -24,6 +24,7 @@ const unlocks = (() => { try { return JSON.parse(localStorage.getItem(UKEY) || '
 const saveUnl = () => { try { localStorage.setItem(UKEY, JSON.stringify(unlocks)); } catch { /* nada */ } };
 let chocoCache = null;
 if (unlocks.choco && !MAP_DEFS.includes(CHOCO_DEF)) MAP_DEFS.push(CHOCO_DEF); // mapa del jefe desbloqueado
+if (unlocks.exe && !MAP_DEFS.includes(GREEN_DEF)) MAP_DEFS.push(GREEN_DEF); // mapa de Sonic.exe desbloqueado
 if (cfg.map >= MAP_DEFS.length) cfg.map = 0;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* nada */ } };
 
@@ -170,9 +171,16 @@ async function getChocoEntry() {
   }
   return chocoCache;
 }
-async function fullPool() { // memes normales + el jefe si está desbloqueado
+const EXE_BOSSES = [['secret-exe-sonic', 'SONIC.EXE', 'sonic', 271 / 512], ['secret-exe-tails', 'TAILS DOLL.EXE', 'tails', 307 / 454], ['secret-exe-knuckles', 'KNUCKLES.EXE', 'knuckles', 164 / 291]];
+let exeCache = null;
+async function getExeEntries() {
+  if (!exeCache) exeCache = await Promise.all(EXE_BOSSES.map(async ([id, name, f, aspect]) => ({ id, name, kind: 'image', blob: await (await fetch(`assets/exe/${f}.png`)).blob(), thumb: `assets/exe/${f}.png`, aspect, builtin: true })));
+  return exeCache;
+}
+async function fullPool() { // memes normales + los jefes desbloqueados
   const pool = await buildMemePool();
   if (unlocks.choco) { try { pool.push(await getChocoEntry()); } catch (e) { console.warn('Jefe no disponible', e); } }
+  if (unlocks.exe) { try { pool.push(...await getExeEntries()); } catch (e) { console.warn('Jefes .EXE no disponibles', e); } }
   return pool;
 }
 async function renderMemes() {
@@ -283,8 +291,16 @@ function unlockChoco() {
   renderMemes();
   return true;
 }
+function unlockExe() {
+  if (unlocks.exe) return false;
+  unlocks.exe = true; saveUnl();
+  if (!MAP_DEFS.includes(GREEN_DEF)) { MAP_DEFS.push(GREEN_DEF); addMapCard(GREEN_DEF, MAP_DEFS.length - 1); addMapChip(GREEN_DEF, MAP_DEFS.length - 1); }
+  renderMemes();
+  return true;
+}
 function bossReward() {
   if (!game.bossDead) return unlockMsg('');
+  if (lastBoss === 'exe') return unlockMsg(unlockExe() ? '🔓 ¡Desbloqueaste a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE como nextbots y el mapa Green Hills .EXE! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados los nextbots y el mapa de Sonic.exe.');
   unlockMsg(unlockChoco() ? '🔓 ¡Desbloqueaste el nextbot ODIO EL CHOCOLATE y el mapa Backrooms Planos! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados el nextbot y el mapa del jefe.');
 }
 game.onEvent = (type, d) => {
@@ -295,16 +311,16 @@ game.onEvent = (type, d) => {
     unlockMsg(''); $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
-    show('choco', game.state === 'dead' && !game.chocoUsed); show('loseLink', !!(game.opts && game.opts.boss));
+    show('choco', game.state === 'dead' && !game.chocoUsed); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco');
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
-    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
-    $('overText').textContent = game.bossDead ? `¡Derrotaste a ODIO EL CHOCOLATE junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
+    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
+    $('overText').textContent = game.bossDead ? `¡Derrotaste a ${lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : 'ODIO EL CHOCOLATE'} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'end') {
-    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && !game.bossDead);
+    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead);
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
-    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ODIO EL CHOCOLATE. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
+    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : 'ODIO EL CHOCOLATE'}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
     $('spectHint').textContent = ''; show('over', true);
   }
 };
@@ -339,17 +355,19 @@ async function chocoThumb(blob) {
   x.fillStyle = '#5a3418'; x.fillRect(0, 0, 256, 256); x.fillStyle = '#fff'; x.font = 'bold 28px sans-serif'; x.textAlign = 'center'; x.fillText('ODIO EL', 128, 120); x.fillText('CHOCOLATE', 128, 156);
   return c.toDataURL();
 }
-async function playBoss() {
+async function playBoss(kind = 'choco') {
   stopIntro();
-  lastBoss = true;
-  show('loading', true); $('loadText').textContent = 'Invocando al jefe…';
-  game.sfx.init(CHOCO_DEF.drone);
+  lastBoss = kind;
+  const exe = kind === 'exe', def = exe ? GREEN_DEF : CHOCO_DEF;
+  show('loading', true); $('loadText').textContent = exe ? 'Corrompiendo la colina…' : 'Invocando al jefe…';
+  game.sfx.init(def.drone);
   await new Promise(r => setTimeout(r, 30));
   try {
-    const entry = await getChocoEntry();
-    $('loadText').textContent = 'Construyendo la arena…';
-    await game.start({ boss: true, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: 9, hp: 14000 }, def: CHOCO_DEF, map: 0, cpus: 100, bots: 1, plan: [entry], diff: 1, size: 64, dur: 600,
-      quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, [entry]);
+    const plan = exe ? await getExeEntries() : [await getChocoEntry()];
+    $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
+    await game.start({ boss: true, bossKey: kind, bossMsg: exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : undefined,
+      perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: 9, hp: 14000 }, def, map: 0, cpus: 100, bots: plan.length, plan, diff: 1, size: 64, dur: 600,
+      quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar el jefe: ' + (err && err.message ? err.message : err));
@@ -362,7 +380,8 @@ async function playBoss() {
 function tryCode() {
   const raw = $('codeIn').value, code = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
   const msg = $('codeMsg');
-  if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; playBoss(); }
+  if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; playBoss('choco'); }
+  else if (code === 'sonic1exe') { msg.textContent = '💀 ¡Código correcto! Corrompiendo Green Hills…'; $('codeIn').value = ''; playBoss('exe'); }
   else if (!code) msg.textContent = '';
   else msg.textContent = '❌ Código incorrecto';
 }
@@ -383,7 +402,7 @@ function updSummary() {
   $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
 }
 updSummary();
-$('retry').onclick = () => { show('over', false); (lastBoss ? playBoss : play)(); };
+$('retry').onclick = () => { show('over', false); lastBoss ? playBoss(lastBoss) : play(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = toMenu;
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
 window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT' && !introActive()) play(); });

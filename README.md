@@ -67,3 +67,6 @@ En el menú principal hay una sección **Códigos secretos**. El código `odio e
 - **Revólver** y **Escopeta** con modelos rehechos (tambor con recámaras, martillo, guardamonte, corredera con estrías, cartuchos...). El arma en primera persona usa un sombreado propio que ya no se quema con la linterna.
 - **Subfusil** (automático: mantén el clic; muchas balas, aturde poco), **Francotirador** (zoom enorme con mira telescópica al apuntar, 40 de daño, muy preciso) y **Lanzagranadas** (explosión pequeña que destierra nextbots cercanos, 30 de daño al jefe).
 - Los CPU también las usan y las sueltan al morir. Hay ~29 armas por el mapa (1 bazuca, 10 revólveres, 5 subfusiles, 8 escopetas, 3 francotiradores y 3 lanzagranadas), que reaparecen a los 60 s (la bazuca no).
+
+## Código secreto: Sonic1.exe
+En «Códigos secretos» escribe `Sonic1.exe`: boss fight en **Green Hills .EXE** (colina verde corrompida con muros a cuadros, palmeras con sangre, flores con un ojo y animales muertos) contra **SONIC.EXE, TAILS DOLL y KNUCKLES.EXE** (tamaño de nextbot normal, 5000 de vida cada uno) con 100 CPUs armados de ayuda. Al derrotar a los tres desbloqueas el mapa y los tres nextbots jefes (aparecen en «Memes / nextbots» y «Mapa y partida»). Las imágenes están en `assets/exe/`.

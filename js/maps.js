@@ -23,7 +23,7 @@ function ctxNew(def, rng) {
     g: new Uint8Array(N * N),                       // 0 libre, 1 pared, 2 objeto
     hgt: new Float32Array(N * N).fill(def.wallH),   // altura de pared
     hx: new Float32Array(N * N), hz: new Float32Array(N * N), // colisión de objetos
-    props: [], lamps: [],
+    props: [], lamps: [], sprites: [],
   };
 }
 function addProp(c, cx, cz, o) {
@@ -529,6 +529,54 @@ export const CHOCO_DEF = {
   lamp: { color: 0xfff0a8, int: 0, dist: 20 }, moon: 0xfff2b0, sunInt: 1.9, pillar: 0xcdbb5e, flicker: 0, drone: 55, gen: genChocoArena,
 };
 
+/* ---------------------------- GREEN HILLS .EXE (secreta) ---------------------------- */
+// colina verde corrompida: suelo de hierba, muros a cuadros, palmeras con sangre, flores con un ojo y animales muertos
+function genGreenHill(def, rng) {
+  const c = ctxNew(def, rng); border(c, 4.6);
+  for (let k = 0; k < 22; k++) { // terrazas a cuadros
+    const w = 2 + Math.floor(rng() * 3), h = 2 + Math.floor(rng() * 3);
+    const x = 3 + Math.floor(rng() * (N - w - 6)), z = 3 + Math.floor(rng() * (N - h - 6));
+    wallRect(c, x, z, x + w, z + h, 2 + rng() * 2.6);
+  }
+  for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
+    if (c.g[I(x, z)] !== 0) continue;
+    const r = rng();
+    if (r < 0.035) { // palmera con sangre
+      const s = 0.85 + rng() * 0.5, lean = (rng() - 0.5) * 0.5;
+      addProp(c, x, z, { hx: 0.4, hz: 0.4, rot: rng() * 6.28, parts: [
+        part('cyl', 0, 2.3 * s, 0, 0.5, 4.6 * s, 0.5, 0x6b4a2a), part('cyl', 0, 1.1 * s, 0, 0.56, 1.5 * s, 0.56, 0x8a0b0b), part('box', 0.27, 0.5 * s, 0, 0.1, 1.4 * s, 0.14, 0x6a0606),
+        part('sphere', lean, 4.7 * s, 0, 3.4 * s, 0.7, 3.4 * s, 0x1d5a22), part('sphere', lean + 0.3, 4.95 * s, 0.2, 2.2 * s, 0.6, 2.2 * s, 0x2a7a2c),
+        part('sphere', lean + 1.1, 4.4 * s, 0.3, 0.45, 0.6, 0.45, 0x9a0e0e), part('sphere', lean - 0.9, 4.45 * s, -0.5, 0.4, 0.55, 0.4, 0x8a0b0b)] });
+    } else if (r < 0.065) { // flor con un ojo en medio
+      const col = [0xb040c8, 0xf0c020, 0xe06090][Math.floor(rng() * 3)];
+      const parts = [part('cyl', 0, 0.45, 0, 0.09, 0.9, 0.09, 0x2f7a2a)];
+      for (let a = 0; a < 7; a++) parts.push(part('sphere', Math.cos(a * 0.8976) * 0.3, 0.95, Math.sin(a * 0.8976) * 0.3, 0.26, 0.12, 0.26, col));
+      parts.push(part('sphere', 0, 0.95, 0, 0.36, 0.3, 0.36, 0xf4f4f0), part('sphere', 0, 0.97, 0.12, 0.2, 0.2, 0.12, 0x9a0000), part('sphere', 0, 0.97, 0.17, 0.1, 0.1, 0.08, 0x000000));
+      addProp(c, x, z, { hx: 0.18, hz: 0.18, rot: rng() * 6.28, parts });
+    } else if (r < 0.072) { // piedra con manchas
+      const s = 0.7 + rng() * 0.8;
+      addProp(c, x, z, { hx: 0.6 * s, hz: 0.6 * s, parts: [part('sphere', 0, 0.4 * s, 0, 1.6 * s, 1.0 * s, 1.3 * s, 0x6b6258), part('sphere', 0.2, 0.75 * s, 0.1, 0.7 * s, 0.4 * s, 0.6 * s, 0x7a0a0a)] });
+    }
+  }
+  const free = keepLargest(c);
+  const flatK = [7, 8];
+  for (let k = 0; k < Math.round(70 * (N / 48) ** 2); k++) { // charcos de sangre con animales muertos
+    const i = free[Math.floor(rng() * free.length)], wx = ((i % N) + 0.5) * CELL + (rng() - 0.5) * 1.6, wz = (((i / N) | 0) + 0.5) * CELL + (rng() - 0.5) * 1.6;
+    const s = 0.7 + rng() * 1.1;
+    c.props.push({ x: wx, z: wz, rot: rng() * 6.28, parts: [part('cyl', 0, 0.03, 0, 2.2 * s, 0.05, 1.5 * s, 0x4a0505)] });
+    const n = 1 + Math.floor(rng() * 2);
+    for (let a = 0; a < n; a++) { const kk = rng() < 0.3 ? flatK[Math.floor(rng() * 2)] : Math.floor(rng() * 7); c.sprites.push({ x: wx + (rng() - 0.5) * 1.2, z: wz + (rng() - 0.5) * 1.2, k: kk, rot: rng() * 6.28 }); }
+  }
+  return { c, free };
+}
+
+export const GREEN_DEF = {
+  id: 'greenhill', name: 'Green Hills .EXE', icon: '🌴', desc: 'Una colina verde corrompida: palmeras con sangre, flores con ojos y animales muertos. ¡Desbloqueada!',
+  indoor: false, wallH: 4.6, sky: 0x4a0f12, fog: [0x3d1012, 0.022], hemi: [0xffb59a, 0x3a1a14, 1.15],
+  tex: { wall: ['checker', '#5a3416', '#b88a45'], floor: ['grass', '#2f6a22'] },
+  lamp: { color: 0xff6050, int: 0, dist: 20 }, moon: 0xff8a70, sunInt: 1.5, flicker: 0, drone: 38, gen: genGreenHill,
+};
+
 /* ---------------------------- ZONA DE CONSTRUCCIÓN ---------------------------- */
 function genConstruction(def, rng) {
   const c = ctxNew(def, rng); border(c, 4); const rooms = [];
@@ -719,7 +767,7 @@ export function generateMap(def, seed) {
     const rng = makeRng((seed + attempt * 7919) >>> 0);
     const { c, free } = def.gen(def, rng);
     if (free.length < N * N * 0.22) continue;
-    return { def, seed, N, CELL, grid: c.g, hgt: c.hgt, hx: c.hx, hz: c.hz, props: c.props, lamps: c.lamps, free };
+    return { def, seed, N, CELL, grid: c.g, hgt: c.hgt, hx: c.hx, hz: c.hz, props: c.props, lamps: c.lamps, sprites: c.sprites || [], free };
   }
   throw new Error('No se pudo generar el mapa ' + def.id);
 }
