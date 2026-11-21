@@ -178,7 +178,7 @@ export class Game {
       if (e.repeat) return;
       this.keys.add(e.code);
       const is = a => this.kbIs(e.code, a);
-      if (is('light') && this.flash) this.flash.visible = !this.flash.visible;
+      if (is('light') && this.flash) { this.flash.visible = !this.flash.visible; this.onEvent('stat', { k: 'light' }); }
       if (is('board')) this.showBoard(true);
       if (is('jump') && this.player && !this.player.alive) this.cycleSpectate();
       if (is('jump') && this.player && this.player.alive) this.jumpReq = true;
@@ -222,7 +222,7 @@ export class Game {
     $('btnRun').addEventListener('pointerdown', () => { this.sprintBtn = true; });
     $('btnRun').addEventListener('pointerup', () => { this.sprintBtn = false; });
     $('btnRun').addEventListener('pointerleave', () => { this.sprintBtn = false; });
-    $('btnLight').addEventListener('pointerdown', () => { if (this.flash) this.flash.visible = !this.flash.visible; });
+    $('btnLight').addEventListener('pointerdown', () => { if (this.flash) { this.flash.visible = !this.flash.visible; this.onEvent('stat', { k: 'light' }); } });
     $('btnJump').addEventListener('pointerdown', () => { this.jumpReq = true; });
     $('btnFire').addEventListener('pointerdown', () => { this.fireReq = true; this.fireHeld = true; });
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('btnFire').addEventListener(ev, () => { this.fireHeld = false; });
@@ -685,6 +685,7 @@ export class Game {
     c.alive = true; c.invuln = 3; c.mode = 'wander'; c.path = null; c.idle = 0.6; c.react = 0; c.lostT = 0;
     c.stamina = 1; c.tired = false; c.spd = 0; c.aim = 0; c.gun = null; this.setCpuGunModel(c, null);
     c.model.userData.fall = 0; c.model.rotation.x = 0; c.model.position.y = 0; c.tag.visible = true;
+    this.onEvent('stat', { k: 'revive' });
     this.toast(`💚 Reviviste a ${c.name}`, 1800); this.feed(`💚 Reviviste a ${c.name}`, true); this.sfx.revive();
   }
 
@@ -720,6 +721,7 @@ export class Game {
       this.equip(i, true);
     }
     this.sfx.thud(0.2);
+    this.onEvent('stat', { k: 'pickup', type, count: this.inv.filter(Boolean).length });
   }
 
   // equipar un slot (pulsar el mismo slot otra vez guarda el arma)
@@ -740,6 +742,7 @@ export class Game {
     const w = this.weapon, def = w && WEAPONS[w.type], p = this.player, cam = this.camera;
     if (!w || !p.alive || w.cd > 0 || w.ammo <= 0) return;
     w.ammo--; w.cd = def.cd; this.recoil = 1;
+    this.onEvent('stat', { k: 'shot', type: w.type, aiming: this.aimK > 0.5 });
     const d = cam.getWorldDirection(this._wd || (this._wd = new THREE.Vector3()));
     // impacto contra nextbots (la mira se tolera según el arma)
     let best = null, bt = def.range;
@@ -767,7 +770,7 @@ export class Game {
       this.explode(cam.position.x + d.x * t, Math.max(0.3, cam.position.y + d.y * t), cam.position.z + d.z * t, def);
     } else if (best && bt <= wt) {
       if (best.boss) this.hitBoss(best, def.dmg);
-      else { const was = best.stun > 0; this.stunBot(best, def.stun); if (!was) this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200); }
+      else { const was = best.stun > 0; this.stunBot(best, def.stun); if (!was) { this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200); this.onEvent('stat', { k: 'stun' }); } }
     }
     if (w.ammo <= 0) this.emptyT = 0.6;
   }
@@ -917,13 +920,13 @@ export class Game {
     if (!moving) this.runLatch = false; // correr «alternar»: se suelta al detenerte
     const wantRun = (this.held('run') || this.runLatch || this.sprintBtn) && moving;
     let speed = 5.0;
-    if (wantRun && p.stamina > 0 && !p.tired) { speed = 10.2; p.stamina -= dt * 0.1; if (p.stamina <= 0) p.tired = true; }
+    if (wantRun && p.stamina > 0 && !p.tired) { speed = 10.2; p.stamina -= dt * 0.1; if (p.stamina <= 0) { p.tired = true; this.onEvent('stat', { k: 'tired' }); } }
     else { p.stamina = Math.min(1, p.stamina + dt * (moving ? 0.1 : 0.2)); if (p.tired && p.stamina > 0.3) p.tired = false; }
     const sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
     const dx = (-sn * f + cs * s) * speed * dt, dz = (-cs * f - sn * s) * speed * dt;
     this.world.move(p, dx, dz);
     // salto
-    if (this.jumpReq && p.y === 0) { p.vy = 5.4; this.sfx.thud(0.12); }
+    if (this.jumpReq && p.y === 0) { p.vy = 5.4; this.sfx.thud(0.12); this.onEvent('stat', { k: 'jump' }); }
     this.jumpReq = false;
     if (p.y > 0 || p.vy > 0) {
       p.vy -= 15 * dt; p.y += p.vy * dt;

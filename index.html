@@ -17,6 +17,7 @@
 </head>
 <body>
   <canvas id="c"></canvas>
+  <div id="achToast" class="hidden"><div class="ic"></div><div><small>🏆 Logro desbloqueado</small><b></b></div></div>
   <div id="vignette"></div>
 
   <!-- INTRO -->
@@ -30,6 +31,7 @@
     <canvas id="bg3d"></canvas>
     <div id="bgShade"></div>
     <div id="bgfaces"></div>
+    <button id="trophyBtn" type="button" title="Logros">🏆<b id="trophyN"></b></button>
     <div class="wrap">
       <header>
         <h1 class="glitch" data-text="NARRY'S MOD">NARRY'S MOD</h1>
@@ -161,6 +163,15 @@
             <button id="codeGo" class="btn small" type="button">Activar</button>
           </div>
           <p class="hint" id="codeMsg"></p>
+        </section>
+        <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
+      </div>
+
+      <!-- LOGROS -->
+      <div id="scrAch" class="screen hidden">
+        <section class="panel">
+          <h2>🏆 Logros <span id="achHead" class="achHead"></span></h2>
+          <div id="achList"></div>
         </section>
         <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>

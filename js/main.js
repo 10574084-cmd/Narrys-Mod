@@ -3,6 +3,7 @@ import { MAP_DEFS, CHOCO_DEF, GREEN_DEF, generateMap, N, setMapSize } from './ma
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
+import * as A from './achievements.js';
 import { runIntro, introActive, stopIntro } from './intro.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
 
@@ -116,6 +117,7 @@ function syncGameInputs() { // vuelve a mostrar en el menú valores que el botó
   updHint(); updSummary();
 }
 $('btnPerf').onclick = () => {
+  A.unlock('optimize');
   const ch = [];
   if (cfg.quality !== 'low') { ch.push(`calidad ${cfg.quality === 'rt' ? 'Raytracing' : cfg.quality === 'high' ? 'Alta' : 'Media'} → Baja`); cfg.quality = 'low'; }
   Object.assign(cfg.perf, { ...DEFAULT_PERF, scale: 75, shadows: 'off', lights: 'few', dist: 70, auto: true });
@@ -159,7 +161,7 @@ window.addEventListener('keydown', e => {
   const { act } = listening, old = cfg.keys[act];
   const other = Object.keys(cfg.keys).find(a => a !== act && cfg.keys[a] === e.code);
   if (other) cfg.keys[other] = old; // intercambia con la acción que ya usaba esa tecla
-  cfg.keys[act] = e.code; save(); listening.b.classList.remove('wait'); listening = null; renderKeys();
+  A.unlock('rebind'); cfg.keys[act] = e.code; save(); listening.b.classList.remove('wait'); listening = null; renderKeys();
 }, true);
 $('btnKeysReset').onclick = () => { listening = null; Object.assign(cfg.keys, DEFAULT_KEYS); save(); renderKeys(); };
 renderKeys();
@@ -231,7 +233,7 @@ $('ccClose').onclick = () => show('chocoCfg', false);
 $('chocoCfg').addEventListener('click', e => { if (e.target === $('chocoCfg')) show('chocoCfg', false); });
 
 async function addFiles(files) {
-  for (const f of files) { try { await addMedia(f); } catch (err) { alert('No se pudo guardar "' + f.name + '": ' + (err && err.message || err)); } }
+  for (const f of files) { try { await addMedia(f); A.unlock('upload'); } catch (err) { alert('No se pudo guardar "' + f.name + '": ' + (err && err.message || err)); } }
   renderMemes();
 }
 $('pFile').onchange = async e => { await addFiles([...e.target.files]); e.target.value = ''; };
@@ -279,6 +281,8 @@ async function play() {
     return;
   }
   if (title) title.pause();
+  A.add('games'); A.unlock('first_game'); A.addToSet('maps', MAP_DEFS[cfg.map].id);
+  if (cfg.cpus >= 60) A.unlock('crowd'); if (cfg.cpus === 0) A.unlock('solo'); if (cfg.bots >= 10) A.unlock('memes10');
   show('menu', false); show('loading', false); show('over', false); show('hud', true); show('pause', false);
   game.lock();
 }
@@ -300,20 +304,28 @@ function unlockExe() {
 }
 function bossReward() {
   if (!game.bossDead) return unlockMsg('');
+  A.unlock(lastBoss === 'exe' ? 'boss_exe' : 'boss_choco');
   if (lastBoss === 'exe') return unlockMsg(unlockExe() ? '🔓 ¡Desbloqueaste a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE como nextbots y el mapa Green Hills .EXE! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados los nextbots y el mapa de Sonic.exe.');
   unlockMsg(unlockChoco() ? '🔓 ¡Desbloqueaste el nextbot ODIO EL CHOCOLATE y el mapa Backrooms Planos! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados el nextbot y el mapa del jefe.');
 }
 game.onEvent = (type, d) => {
+  if (type === 'stat') { A.onGameStat(d); return; }
   if (type === 'pause') {
     if (!$('over').classList.contains('hidden') || !$('chocoBox').classList.contains('hidden')) return; // ya hay una pantalla encima
     if (game.state === 'playing' || game.state === 'dead') { game.pause(); show('pause', true); }
   } else if (type === 'dead') {
+    A.add('deaths'); A.unlock('first_death');
     unlockMsg(''); $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
     show('choco', game.state === 'dead' && !game.chocoUsed); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco');
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
+    if (!(game.opts && game.opts.boss)) {
+      A.add('wins'); A.unlock('win1');
+      if (cfg.diff >= 2) A.unlock('win_hard'); if (cfg.diff >= 3) A.unlock('win_nightmare');
+      if (cfg.dur >= 600) A.unlock('win_long'); if (cfg.size >= 80) A.unlock('win_huge');
+    }
     bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
     $('overText').textContent = game.bossDead ? `¡Derrotaste a ${lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : 'ODIO EL CHOCOLATE'} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
@@ -326,6 +338,7 @@ game.onEvent = (type, d) => {
 };
 
 $('choco').onclick = () => {
+  A.unlock('choco_revive');
   const box = $('chocoBox'), v = $('chocoVid');
   if (game.chocoUsed || game.state !== 'dead') return;
   show('over', false); show('choco', false); game.pause(); show('chocoBox', true);
@@ -374,14 +387,15 @@ async function playBoss(kind = 'choco') {
     return;
   }
   if (title) title.pause();
+  A.add('games'); A.unlock('first_game');
   show('menu', false); show('loading', false); show('over', false); show('hud', true); show('pause', false);
   game.lock();
 }
 function tryCode() {
   const raw = $('codeIn').value, code = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
   const msg = $('codeMsg');
-  if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; playBoss('choco'); }
-  else if (code === 'sonic1exe') { msg.textContent = '💀 ¡Código correcto! Corrompiendo Green Hills…'; $('codeIn').value = ''; playBoss('exe'); }
+  if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; A.unlock('code_choco'); playBoss('choco'); }
+  else if (code === 'sonic1exe') { msg.textContent = '💀 ¡Código correcto! Corrompiendo Green Hills…'; $('codeIn').value = ''; A.unlock('code_exe'); playBoss('exe'); }
   else if (!code) msg.textContent = '';
   else msg.textContent = '❌ Código incorrecto';
 }
@@ -390,6 +404,7 @@ $('codeIn').onkeydown = e => { if (e.key === 'Enter') tryCode(); };
 
 // la página del troll se abre en una ventana emergente (así puede moverse); si el navegador la bloquea, se abre en pestaña
 document.querySelector('#loseLink a').onclick = e => {
+  A.unlock('troll');
   const w = 480, h = 360, l = Math.max(0, (screen.width - w) / 2), t = Math.max(0, (screen.height - h) / 2);
   const pop = window.open(e.currentTarget.href, 'odioeltroyano', `popup=yes,width=${w},height=${h},left=${l},top=${t}`);
   if (pop) e.preventDefault();
@@ -417,3 +432,17 @@ try {
 window.__game = game; window.__maps = MAP_DEFS; // útil para depurar en la consola
 
 runIntro();
+
+/* ---------- logros: botón del trofeo, pantalla y aviso ---------- */
+const updTrophy = () => { $('trophyN').textContent = `${A.count()}/${A.ACH.length}`; };
+$('trophyBtn').onclick = () => { A.render($('achList'), $('achHead')); go('scrAch'); };
+let achQ = [], achBusy = false;
+function showAch() {
+  if (achBusy || !achQ.length) return;
+  achBusy = true; const a = achQ.shift(), el = $('achToast');
+  el.querySelector('.ic').textContent = a.icon; el.querySelector('b').textContent = a.name;
+  el.classList.remove('hidden'); void el.offsetWidth; el.classList.add('in');
+  setTimeout(() => { el.classList.remove('in'); setTimeout(() => { el.classList.add('hidden'); achBusy = false; showAch(); }, 400); }, 3600);
+}
+A.onAchievement(a => { achQ.push(a); updTrophy(); showAch(); if (!$('scrAch').classList.contains('hidden')) A.render($('achList'), $('achHead')); });
+updTrophy();

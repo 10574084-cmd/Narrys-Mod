@@ -70,3 +70,6 @@ En el menú principal hay una sección **Códigos secretos**. El código `odio e
 
 ## Código secreto: Sonic1.exe
 En «Códigos secretos» escribe `Sonic1.exe`: boss fight en **Green Hills .EXE** (colina verde corrompida con muros a cuadros, palmeras con sangre, flores con un ojo y animales muertos) contra **SONIC.EXE, TAILS DOLL y KNUCKLES.EXE** (tamaño de nextbot normal, 5000 de vida cada uno) con 100 CPUs armados de ayuda. Al derrotar a los tres desbloqueas el mapa y los tres nextbots jefes (aparecen en «Memes / nextbots» y «Mapa y partida»). Las imágenes están en `assets/exe/`.
+
+## Logros 🏆
+Botón de trofeo en la esquina del menú principal con 44 logros (partidas, victorias, dificultades, mapas, armas, salto, revivir CPUs, opciones…). Los que se consiguen con códigos secretos aparecen como **???** hasta desbloquearlos. Se guardan en el navegador y al conseguir uno sale un aviso arriba.
