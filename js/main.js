@@ -446,3 +446,16 @@ function showAch() {
 }
 A.onAchievement(a => { achQ.push(a); updTrophy(); showAch(); if (!$('scrAch').classList.contains('hidden')) A.render($('achList'), $('achHead')); });
 updTrophy();
+
+/* ---------- reinicio de fábrica: el juego se olvida de todo ---------- */
+$('btnFactory').onclick = async () => {
+  if (!confirm('¿Reiniciar el juego de fábrica?\n\nSe borrarán ajustes, controles, logros, desbloqueos, estadísticas y tus nextbots subidos. No se puede deshacer.')) return;
+  if (!confirm('Última confirmación: ¿borrar todo y empezar de cero?')) return;
+  try { game.sfx.ctx && game.sfx.ctx.close(); } catch { /* nada */ }
+  try {
+    const dbs = indexedDB.databases ? await indexedDB.databases() : [{ name: 'narrysmod_media' }];
+    await Promise.all(dbs.filter(d => d.name).map(d => new Promise(r => { const q = indexedDB.deleteDatabase(d.name); q.onsuccess = q.onerror = q.onblocked = () => r(); setTimeout(r, 1500); })));
+  } catch { /* nada */ }
+  try { localStorage.clear(); sessionStorage.clear(); } catch { /* nada */ }
+  location.reload();
+};

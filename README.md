@@ -73,3 +73,6 @@ En «Códigos secretos» escribe `Sonic1.exe`: boss fight en **Green Hills .EXE*
 
 ## Logros 🏆
 Botón de trofeo en la esquina del menú principal con 44 logros (partidas, victorias, dificultades, mapas, armas, salto, revivir CPUs, opciones…). Los que se consiguen con códigos secretos aparecen como **???** hasta desbloquearlos. Se guardan en el navegador y al conseguir uno sale un aviso arriba.
+
+## Reinicio de fábrica
+En Opciones → «Zona peligrosa» hay un botón para borrar todo lo guardado (ajustes, controles, logros, desbloqueos, estadísticas y nextbots subidos). Pide doble confirmación y el juego queda como recién instalado.
