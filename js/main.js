@@ -292,14 +292,14 @@ function unlockChoco() {
   if (unlocks.choco) return false;
   unlocks.choco = true; saveUnl();
   if (!MAP_DEFS.includes(CHOCO_DEF)) { MAP_DEFS.push(CHOCO_DEF); addMapCard(CHOCO_DEF, MAP_DEFS.length - 1); addMapChip(CHOCO_DEF, MAP_DEFS.length - 1); }
-  renderMemes();
+  renderMemes(); renderBossKeys();
   return true;
 }
 function unlockExe() {
   if (unlocks.exe) return false;
   unlocks.exe = true; saveUnl();
   if (!MAP_DEFS.includes(GREEN_DEF)) { MAP_DEFS.push(GREEN_DEF); addMapCard(GREEN_DEF, MAP_DEFS.length - 1); addMapChip(GREEN_DEF, MAP_DEFS.length - 1); }
-  renderMemes();
+  renderMemes(); renderBossKeys();
   return true;
 }
 function bossReward() {
@@ -318,7 +318,7 @@ game.onEvent = (type, d) => {
     unlockMsg(''); $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
-    show('choco', game.state === 'dead' && !game.chocoUsed); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco');
+    show('choco', game.state === 'dead' && !game.chocoUsed && !!unlocks.choco); // solo si ya derrotaste al jefe show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco');
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
     if (!(game.opts && game.opts.boss)) {
@@ -459,3 +459,18 @@ $('btnFactory').onclick = async () => {
   try { localStorage.clear(); sessionStorage.clear(); } catch { /* nada */ }
   location.reload();
 };
+
+/* ---------- atajos a los jefes derrotados (esquina superior izquierda) ---------- */
+function renderBossKeys() {
+  const box = $('bossKeys'); box.innerHTML = '';
+  const list = [['choco', '🍫', 'ODIO EL CHOCOLATE', 'Backrooms Planos'], ['exe', '💀', 'SONIC.EXE y amigos', 'Green Hills .EXE']];
+  for (const [k, ico, name, map] of list) {
+    if (!unlocks[k]) continue;
+    const b = document.createElement('button'); b.type = 'button'; b.title = `Pelear otra vez contra ${name} (${map})`;
+    b.innerHTML = `<span>${ico}</span><i>${name}</i>`;
+    b.onclick = () => { if (confirm(`¿Pelear otra vez contra ${name}?`)) playBoss(k); };
+    box.appendChild(b);
+  }
+  box.classList.toggle('hidden', !box.children.length);
+}
+renderBossKeys();
