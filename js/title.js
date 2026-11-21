@@ -113,7 +113,7 @@ export class TitleScene {
     for (let x = -32; x <= 32; x += 2.5) addWall(x, -26);
     for (let z = -23.5; z <= 6; z += 2.5) { addWall(-24, z); addWall(24, z); }
     // columnas o árboles sueltos al fondo
-    const outdoorTrees = ['forest', 'hedge', 'island', 'flat'].includes(def.id);
+    const outdoorTrees = ['forest', 'hedge', 'island', 'flat', 'tundra'].includes(def.id);
     for (let i = 0; i < 10; i++) {
       const x = (rand() - 0.5) * 36, z = -6 - rand() * 16;
       if (Math.abs(x) < 3) continue;

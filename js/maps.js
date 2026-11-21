@@ -166,10 +166,10 @@ function genWarehouse(def, rng) {
     if (rng() < 0.12) continue;
     for (let x = x0; x < Math.min(x0 + 8, N - 3); x++) {
       if (c.g[I(x, z)] !== 0 || occ[I(x, z)]) continue;
-      const col = [0x4f6d8a, 0x8a5a3c, 0x5c7a4a][Math.floor(rng() * 3)];
+      const sh = def.shelf, col = (sh ? sh.cols : [0x4f6d8a, 0x8a5a3c, 0x5c7a4a])[Math.floor(rng() * (sh ? sh.cols.length : 3))];
       addProp(c, x, z, { hx: 1.25, hz: 0.6, parts: [
-        box(0, 1.7, 0, 2.5, 3.4, 1.1, 0x2c3138),
-        box(0, 0.55, 0, 2.3, 0.7, 1.15, col), box(0, 1.45, 0, 2.3, 0.7, 1.15, 0x9a7b4f), box(0, 2.35, 0, 2.3, 0.7, 1.15, col), box(0, 3.1, 0, 2.3, 0.5, 1.15, 0x8c6a42),
+        box(0, 1.7, 0, 2.5, 3.4, 1.1, sh ? sh.frame : 0x2c3138),
+        box(0, 0.55, 0, 2.3, 0.7, 1.15, col), box(0, 1.45, 0, 2.3, 0.7, 1.15, sh ? sh.cols[(rng() * sh.cols.length) | 0] : 0x9a7b4f), box(0, 2.35, 0, 2.3, 0.7, 1.15, col), box(0, 3.1, 0, 2.3, 0.5, 1.15, sh ? 0xe8e8e8 : 0x8c6a42),
       ] });
     }
   }
@@ -294,13 +294,13 @@ function genForest(def, rng) {
     const p = 0.02 + 0.22 * noise(x, z) * noise(x, z) * 2;
     const r = rng();
     if (r < p) {
-      const s = 0.8 + rng() * 0.7, dark = rng() < 0.5;
+      const s = 0.8 + rng() * 0.7, dark = rng() < 0.5, T = def.trees;
       addProp(c, x, z, { hx: 0.45, hz: 0.45, parts: [
-        part('cyl', 0, 1.2, 0, 0.55, 2.4, 0.55, 0x3d2a1a),
-        part('cone', 0, 3.4, 0, 2.8 * s, 3.4 * s, 2.8 * s, dark ? 0x12351f : 0x1b4a26), part('cone', 0, 5, 0, 2 * s, 2.6 * s, 2 * s, dark ? 0x174326 : 0x225a2e)] });
+        part('cyl', 0, 1.2, 0, 0.55, 2.4, 0.55, T ? T.trunk : 0x3d2a1a),
+        part('cone', 0, 3.4, 0, 2.8 * s, 3.4 * s, 2.8 * s, T ? T.a : dark ? 0x12351f : 0x1b4a26), part('cone', 0, 5, 0, 2 * s, 2.6 * s, 2 * s, T ? T.b : dark ? 0x174326 : 0x225a2e)] });
     } else if (r < p + 0.015) {
       const s = 0.8 + rng();
-      addProp(c, x, z, { hx: 0.6 * s, hz: 0.6 * s, parts: [part('sphere', 0, 0.4 * s, 0, 1.7 * s, 1.1 * s, 1.4 * s, 0x5b5f66)] });
+      addProp(c, x, z, { hx: 0.6 * s, hz: 0.6 * s, parts: [part('sphere', 0, 0.4 * s, 0, 1.7 * s, 1.1 * s, 1.4 * s, def.rockC || 0x5b5f66)] });
     }
   }
   const free = keepLargest(c);
@@ -332,6 +332,176 @@ function genFlat(def, rng) {
     if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 0.45, hz: 0.45, parts: tree(0.8 + rng() * 0.5, false) });
   }
   const free = keepLargest(c);
+  return { c, free };
+}
+
+
+/* ============================ MAPAS NUEVOS ============================ */
+// antorchas/farolas sueltas sobre celdas libres (para los exteriores)
+function torches(c, free, rng, n, col = 0xffa94d, h = 2.6) {
+  for (let k = 0; k < n; k++) {
+    const i = free[Math.floor(rng() * free.length)], x = i % N, z = (i / N) | 0;
+    if (c.g[I(x, z)] !== 0) continue;
+    const wx = (x + 0.5) * CELL, wz = (z + 0.5) * CELL;
+    c.lamps.push({ x: wx, z: wz, y: h });
+    c.props.push({ x: wx, z: wz, rot: 0, parts: [part('cyl', 0, h / 2 - 0.1, 0, 0.1, h, 0.1, 0x2a2a2f), part('sphere', 0, h + 0.1, 0, 0.35, 0.35, 0.35, col, true)] });
+  }
+}
+
+/* ---------------------------- METRO ---------------------------- */
+// salas largas paralelas con andenes, trenes parados y pilares; se cruza por pasos entre salas
+function genTunnels(def, rng) {
+  const c = ctxNew(def, rng); border(c);
+  const rows = []; for (let z0 = 1; z0 + 5 < N - 1; z0 += 6) rows.push(z0);
+  for (let k = 1; k < rows.length; k++) {
+    const wz = rows[k] - 1;
+    for (let x = 1; x < N - 1; x++) c.g[I(x, wz)] = 1;
+    const gaps = 3 + Math.floor(rng() * 2);
+    for (let g = 0; g < gaps; g++) { const gx = 3 + Math.floor(rng() * (N - 8)); for (let d = 0; d < 3; d++) c.g[I(gx + d, wz)] = 0; }
+  }
+  const carCols = [0x2a6fb0, 0xc23b3b, 0xd8d8de, 0x3a8a5a, 0xd8a52a];
+  rows.forEach((z0, r) => {
+    const train = r % 2 === 1 || rng() < 0.3;
+    for (let x = 4; x < N - 4; x++) {
+      if (train) {
+        if ((x - 4) % 9 >= 7) continue; // huecos para cruzar entre vagones
+        const col = carCols[Math.floor((x - 4) / 9 + r) % carCols.length];
+        for (let z = z0 + 1; z <= z0 + 3; z++) if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 1.25, hz: 1.25, parts: [box(0, 1.35, 0, 2.5, 2.7, 2.5, col), box(0, 1.7, 0, 2.54, 0.7, 2.1, 0xcfe8ff), box(0, 2.78, 0, 2.2, 0.1, 2.2, 0x22262b)] });
+      } else if (x % 4 === 0 && c.g[I(x, z0 + 2)] === 0) {
+        addProp(c, x, z0 + 2, { hx: 0.6, hz: 0.6, parts: [box(0, def.wallH / 2, 0, 1.2, def.wallH, 1.2, def.pillar || 0x9a9ea3)] });
+      }
+    }
+    if (!train) for (let k = 0; k < 3; k++) { // bancos (solo en salas sin tren, junto a un pilar de la fila central)
+      const x = 3 + 4 * Math.floor(rng() * ((N - 8) / 4)) + 2, z = z0 + (rng() < 0.5 ? 1 : 3);
+      if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 0.9, hz: 0.35, parts: [box(0, 0.45, 0, 1.8, 0.1, 0.6, 0x6b4a2a), box(-0.7, 0.22, 0, 0.1, 0.45, 0.5, 0x222222), box(0.7, 0.22, 0, 0.1, 0.45, 0.5, 0x222222)] });
+    }
+  });
+  const free = keepLargest(c);
+  indoorLamps(c, 0.8);
+  return { c, free };
+}
+
+/* ---------------------------- ESTACIONAMIENTO ---------------------------- */
+function genParking(def, rng) {
+  const c = ctxNew(def, rng); border(c);
+  const carCols = [0xb02a2a, 0x2a5fb0, 0xcfcfcf, 0x222222, 0xd0a82a, 0x2a8a4a, 0x7a7a82];
+  for (let k = 0; k < 4; k++) { // cajas de escaleras / ascensores
+    const w = 3 + Math.floor(rng() * 2), h = 3 + Math.floor(rng() * 2);
+    const x0 = 3 + Math.floor(rng() * (N - w - 6)), z0 = 3 + Math.floor(rng() * (N - h - 6));
+    wallRect(c, x0, z0, x0 + w, z0 + h, def.wallH);
+    const side = Math.floor(rng() * 4);
+    for (let d = 0; d < 2; d++) {
+      if (side === 0) c.g[I(x0 + 1 + d, z0)] = 0; else if (side === 1) c.g[I(x0 + 1 + d, z0 + h - 1)] = 0;
+      else if (side === 2) c.g[I(x0, z0 + 1 + d)] = 0; else c.g[I(x0 + w - 1, z0 + 1 + d)] = 0;
+    }
+  }
+  for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
+    if (c.g[I(x, z)] !== 0) continue;
+    if (x % 6 === 0 && z % 6 === 0) { addProp(c, x, z, { hx: 0.6, hz: 0.6, parts: [box(0, def.wallH / 2, 0, 1.2, def.wallH, 1.2, def.pillar || 0x8a8d90)] }); continue; }
+    const zz = z % 6;
+    if ((zz === 1 || zz === 4) && x % 3 === 1 && rng() < 0.6 && c.g[I(x, z + 1)] === 0) { // coche aparcado (2 celdas de largo)
+      const col = carCols[Math.floor(rng() * carCols.length)];
+      addProp(c, x, z, { hx: 0.9, hz: 1.2, parts: [box(0, 0.55, 0.2, 1.8, 0.8, 2.4, col), box(-0.8, 0.2, 0.9, 0.2, 0.4, 0.5, 0x111111), box(0.8, 0.2, 0.9, 0.2, 0.4, 0.5, 0x111111)] });
+      addProp(c, x, z + 1, { hx: 0.9, hz: 1.2, parts: [box(0, 0.55, -0.2, 1.8, 0.8, 2.4, col), box(0, 1.15, -0.2, 1.6, 0.6, 1.7, 0x1b2330), box(-0.8, 0.2, -0.9, 0.2, 0.4, 0.5, 0x111111), box(0.8, 0.2, -0.9, 0.2, 0.4, 0.5, 0x111111)] });
+    }
+  }
+  const free = keepLargest(c);
+  indoorLamps(c, 0.7);
+  return { c, free };
+}
+
+/* ---------------------------- DESIERTO ---------------------------- */
+function genDesert(def, rng) {
+  const c = ctxNew(def, rng); border(c, 3.4);
+  const sand = 0xc9a06a;
+  for (let k = 0; k < 5; k++) { // ruinas de arenisca con huecos y columnas rotas
+    const w = 6 + Math.floor(rng() * 5), h = 5 + Math.floor(rng() * 4);
+    const x0 = 4 + Math.floor(rng() * (N - w - 8)), z0 = 4 + Math.floor(rng() * (N - h - 8));
+    for (let x = x0; x < x0 + w; x++) for (const z of [z0, z0 + h - 1]) if (rng() > 0.3) { c.g[I(x, z)] = 1; c.hgt[I(x, z)] = 2.2 + rng() * 2; }
+    for (let z = z0; z < z0 + h; z++) for (const x of [x0, x0 + w - 1]) if (rng() > 0.3) { c.g[I(x, z)] = 1; c.hgt[I(x, z)] = 2.2 + rng() * 2; }
+    for (let q = 0; q < 3; q++) { const px = x0 + 2 + Math.floor(rng() * (w - 4)), pz = z0 + 2 + Math.floor(rng() * (h - 4)), ph = 1.5 + rng() * 2.5;
+      if (c.g[I(px, pz)] === 0) addProp(c, px, pz, { hx: 0.5, hz: 0.5, parts: [part('cyl', 0, ph / 2, 0, 0.9, ph, 0.9, 0xd8bb8a), part('cyl', 0, 0.1, 0, 1.2, 0.2, 1.2, 0xb9996a)] }); }
+  }
+  for (let k = 0; k < 9; k++) { // mesetas
+    const x = 3 + Math.floor(rng() * (N - 8)), z = 3 + Math.floor(rng() * (N - 8)), s = 2 + Math.floor(rng() * 2);
+    if ([...Array(s).keys()].every(a => [...Array(s).keys()].every(b => c.g[I(x + a, z + b)] === 0))) wallRect(c, x, z, x + s, z + s, 3 + rng() * 3.5);
+  }
+  for (let z = 1; z < N - 1; z++) for (let x = 1; x < N - 1; x++) {
+    if (c.g[I(x, z)] !== 0) continue;
+    const r = rng();
+    if (r < 0.022) { // cactus
+      const s = 0.8 + rng() * 0.6;
+      addProp(c, x, z, { hx: 0.35, hz: 0.35, parts: [part('cyl', 0, 1.2 * s, 0, 0.5, 2.4 * s, 0.5, 0x3f7a3a), box(0.45, 1.3 * s, 0, 0.7, 0.28, 0.28, 0x3f7a3a), box(0.7, 1.7 * s, 0, 0.28, 0.9, 0.28, 0x3f7a3a), box(-0.45, 1.0 * s, 0, 0.7, 0.28, 0.28, 0x3f7a3a), box(-0.7, 1.4 * s, 0, 0.28, 0.8, 0.28, 0x3f7a3a)] });
+    } else if (r < 0.04) {
+      const s = 0.7 + rng() * 0.9;
+      addProp(c, x, z, { hx: 0.55 * s, hz: 0.55 * s, parts: [part('sphere', 0, 0.4 * s, 0, 1.6 * s, 1.0 * s, 1.3 * s, sand)] });
+    }
+  }
+  const free = keepLargest(c);
+  torches(c, free, rng, 10);
+  return { c, free };
+}
+
+/* ---------------------------- CEMENTERIO ---------------------------- */
+function genGraveyard(def, rng) {
+  const c = ctxNew(def, rng); border(c, 3.4);
+  for (let k = 0; k < 3; k++) { // mausoleos
+    const w = 6 + Math.floor(rng() * 2), h = 5 + Math.floor(rng() * 2);
+    const x0 = 4 + Math.floor(rng() * (N - w - 8)), z0 = 4 + Math.floor(rng() * (N - h - 8));
+    wallRect(c, x0, z0, x0 + w, z0 + h, 4);
+    for (let x = x0 + 1; x < x0 + w - 1; x++) for (let z = z0 + 1; z < z0 + h - 1; z++) c.g[I(x, z)] = 0;
+    const door = x0 + Math.floor(w / 2);
+    c.g[I(door, z0 + h - 1)] = 0; c.g[I(door + 1, z0 + h - 1)] = 0;
+    addProp(c, x0 + 2, z0 + 2, { hx: 0.9, hz: 0.6, parts: [box(0, 0.5, 0, 1.8, 1, 1.0, 0x777b82), box(0, 1.05, 0, 1.9, 0.12, 1.1, 0x5d6168)] });
+  }
+  for (let z = 3; z < N - 3; z += 3) for (let x = 3; x < N - 3; x += 2) {
+    if (c.g[I(x, z)] !== 0 || x % 12 < 2 || rng() > 0.6) continue; // dejamos pasillos
+    const cross = rng() < 0.25, rot = (rng() - 0.5) * 0.3;
+    addProp(c, x, z, { hx: 0.35, hz: 0.25, rot, parts: cross
+      ? [box(0, 0.8, 0, 0.18, 1.6, 0.18, 0x8a8d94), box(0, 1.1, 0, 0.8, 0.18, 0.18, 0x8a8d94)]
+      : [box(0, 0.5, 0, 0.9, 1.0, 0.25, 0x80848b), part('cyl', 0, 1.0, 0, 0.9, 0.3, 0.25, 0x80848b), box(0, 0.05, 0, 1.1, 0.1, 0.5, 0x4d5157)] });
+  }
+  for (let k = 0; k < Math.round(N * 0.45); k++) { // árboles muertos
+    const x = 2 + Math.floor(rng() * (N - 4)), z = 2 + Math.floor(rng() * (N - 4));
+    if (c.g[I(x, z)] !== 0) continue;
+    addProp(c, x, z, { hx: 0.4, hz: 0.4, parts: [part('cyl', 0, 1.6, 0, 0.45, 3.2, 0.45, 0x2a211b), box(0.5, 3.0, 0, 1.2, 0.14, 0.14, 0x2a211b), box(-0.45, 3.4, 0.2, 1.0, 0.12, 0.12, 0x2a211b), box(0.1, 3.8, -0.3, 0.12, 0.9, 0.12, 0x2a211b)] });
+  }
+  const free = keepLargest(c);
+  torches(c, free, rng, 12, 0x8affc0, 2.4);
+  return { c, free };
+}
+
+/* ---------------------------- FERIA ABANDONADA ---------------------------- */
+function genFair(def, rng) {
+  const c = ctxNew(def, rng); border(c, 3.4);
+  const cols = [0xd23a3a, 0xe8d03a, 0x3a8ad2, 0x8a3ad2, 0x3ad28a];
+  const mid = Math.floor(N / 2);
+  // noria en el centro: base maciza y ruedas de cabinas decorativas
+  for (let d = -1; d <= 1; d += 2) addProp(c, mid + d * 2, mid, { hx: 0.7, hz: 0.7, parts: [box(0, 3.5, 0, 0.7, 7, 0.7, 0x6a6f78)] });
+  const spokes = [];
+  for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; spokes.push(part('sphere', Math.cos(a) * 6.2 * 0 , 7.4 + Math.sin(a) * 6.2, 0, 1.1, 1.1, 1.1, cols[k % cols.length])); spokes[k].dx = Math.cos(a) * 6.2; spokes[k].dz = 0; }
+  c.props.push({ x: (mid + 0.5) * CELL, z: (mid + 0.5) * CELL, rot: 0, parts: [...spokes, part('sphere', 0, 7.4, 0, 1.2, 1.2, 1.2, 0xcfd3da)] });
+  for (let k = 0; k < 4; k++) { // carruseles
+    const x = 4 + Math.floor(rng() * (N - 9)), z = 4 + Math.floor(rng() * (N - 9));
+    if (Math.abs(x - mid) < 6 && Math.abs(z - mid) < 6) continue;
+    if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 1.2, hz: 1.2, parts: [part('cyl', 0, 0.25, 0, 5.6, 0.5, 5.6, 0x9a4a6a), part('cyl', 0, 1.6, 0, 0.5, 3.2, 0.5, 0xd8d8de), part('cone', 0, 3.8, 0, 6, 1.6, 6, cols[k % cols.length])] });
+  }
+  for (let k = 0; k < 10; k++) { // puestos y carpas de 2x2 celdas
+    const x = 3 + Math.floor(rng() * (N - 7)), z = 3 + Math.floor(rng() * (N - 7)), col = cols[k % cols.length];
+    if (Math.abs(x - mid) < 6 && Math.abs(z - mid) < 6) continue;
+    if (![0, 1].every(a => [0, 1].every(b => c.g[I(x + a, z + b)] === 0))) continue;
+    for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+      const parts = [box(0, 1.2, 0, 2.4, 2.4, 2.4, k % 2 ? col : 0xf0f0f0), box(0, 1.9, 0, 2.5, 0.5, 2.5, col)];
+      if (!a && !b) parts.push(part('cone', 1.25, 3.2, 1.25, 5.6, 1.8, 5.6, col));
+      addProp(c, x + a, z + b, { hx: 1.15, hz: 1.15, parts });
+    }
+  }
+  for (let k = 0; k < 14; k++) { // globos atados
+    const x = 2 + Math.floor(rng() * (N - 4)), z = 2 + Math.floor(rng() * (N - 4));
+    if (c.g[I(x, z)] === 0) addProp(c, x, z, { hx: 0.3, hz: 0.3, parts: [part('cyl', 0, 0.8, 0, 0.05, 1.6, 0.05, 0xdddddd), part('sphere', 0, 2.1, 0, 0.9, 1.1, 0.9, cols[k % cols.length]), part('sphere', 0.35, 2.4, 0.2, 0.8, 1.0, 0.8, cols[(k + 2) % cols.length])] });
+  }
+  const free = keepLargest(c);
+  torches(c, free, rng, 18, 0xffe08a, 3.0);
   return { c, free };
 }
 
@@ -502,6 +672,46 @@ export const MAP_DEFS = [
     indoor: false, wallH: 3.4, sky: 0x2a1f3a, fog: [0x2a2038, 0.03], hemi: [0xb8a0d8, 0x20182a, 1.0],
     tex: { wall: ['hedge', '#1c4a24'], floor: ['grass', '#27502a'] },
     lamp: { color: 0xffd9a0, int: 55, dist: 18 }, moon: 0xc8a0ff, sunInt: 0.8, pillar: 0x7a7a82, flicker: 0.3, drone: 40, gen: genBackrooms },
+  { id: 'metro', name: 'Estación de Metro', icon: '🚇', desc: 'Andenes largos, trenes detenidos y pilares. Cruza entre salas por los pasos.',
+    indoor: true, wallH: 4.2, ceilH: 4.2, sky: 0x050608, fog: [0x0a0c10, 0.045], hemi: [0xbcd0ff, 0x15181d, 0.7],
+    tex: { wall: ['concrete', '#8f959a'], floor: ['concrete', '#4a4d52'], ceil: ['concrete', '#5a5e63'] },
+    lamp: { color: 0xdff1ff, int: 30, dist: 20, panel: 0xeaf6ff }, pillar: 0x9a9ea3, flicker: 0.5, drone: 46, gen: genTunnels },
+  { id: 'school', name: 'Escuela Abandonada', icon: '🏫', desc: 'Aulas y pasillos con pupitres viejos. Alguien tocó el timbre...',
+    indoor: true, wallH: 3.2, ceilH: 3.2, sky: 0x0a0a08, fog: [0x14120e, 0.05], hemi: [0xfff0c8, 0x24201a, 0.9],
+    tex: { wall: ['wallpaper', '#a9c9a0', '#98b890'], floor: ['wood', '#7b5a38'], ceil: ['ceiling', '#d6d2c0'] },
+    lamp: { color: 0xfff4d0, int: 26, dist: 18, panel: 0xfff8e0 }, cols: [0x7a5230, 0x3d5a80, 0x8a3a2a, 0x6b6f3a], flicker: 0.45, drone: 44, gen: genMansion },
+  { id: 'hospital', name: 'Hospital Abandonado', icon: '🏥', desc: 'Camillas, habitaciones frías y luces que parpadean.',
+    indoor: true, wallH: 3.2, ceilH: 3.2, sky: 0x060a09, fog: [0x0c1412, 0.05], hemi: [0xcffff0, 0x1a2422, 0.7],
+    tex: { wall: ['concrete', '#cfe0dc'], floor: ['concrete', '#8fa3a0'], ceil: ['ceiling', '#e6efee'] },
+    lamp: { color: 0xdffff6, int: 28, dist: 18, panel: 0xeafff9 }, cols: [0xe8f0ee, 0x9fd0c8, 0x6fa8a0, 0xffffff, 0xb8c8c4], flicker: 0.65, drone: 41, gen: genMansion },
+  { id: 'market', name: 'Supermercado', icon: '🛒', desc: 'Pasillos de estanterías llenas, bien iluminado... y vacío.',
+    indoor: true, wallH: 5, ceilH: 5, sky: 0x0c0c0c, fog: [0x1a1816, 0.03], hemi: [0xfff8e8, 0x2a2824, 0.9],
+    tex: { wall: ['wallpaper', '#e8d8e0', '#d8c8d0'], floor: ['concrete', '#c8c6bc'], ceil: ['ceiling', '#f0eee0'] },
+    lamp: { color: 0xfffbe8, int: 38, dist: 24, panel: 0xffffff }, shelf: { frame: 0xd9dce0, cols: [0xd23a3a, 0x3a8ad2, 0xe0c030, 0x4aa860] }, flicker: 0.2, drone: 52, gen: genWarehouse },
+  { id: 'parking', name: 'Estacionamiento', icon: '🅿️', desc: 'Garaje subterráneo con coches aparcados y columnas. Tubos fluorescentes.',
+    indoor: true, wallH: 3.2, ceilH: 3.2, sky: 0x050505, fog: [0x0b0b0a, 0.055], hemi: [0xffe6a8, 0x1a1810, 0.6],
+    tex: { wall: ['concrete', '#6c6f73'], floor: ['asphalt', '#2b2c30'], ceil: ['concrete', '#55585c'] },
+    lamp: { color: 0xffe6a8, int: 30, dist: 18, panel: 0xfff0c8 }, pillar: 0x8a8d90, flicker: 0.7, drone: 43, gen: genParking },
+  { id: 'space', name: 'Estación Espacial', icon: '🛰️', desc: 'Módulos de metal con luces azules y consolas. Silencio de vacío.',
+    indoor: true, wallH: 3.6, ceilH: 3.6, sky: 0x03060a, fog: [0x050a10, 0.05], hemi: [0x9fe8ff, 0x16222c, 0.85],
+    tex: { wall: ['metal', '#33404f'], floor: ['metal', '#1d242c'], ceil: ['metal', '#27313b'] },
+    lamp: { color: 0x6fe8ff, int: 30, dist: 18, panel: 0x9ff4ff }, cols: [0x1f8fb0, 0x2a3a4a, 0xd0e8f0, 0x6a2ab0], flicker: 0.3, drone: 62, gen: genMansion },
+  { id: 'desert', name: 'Desierto de Ruinas', icon: '🏜️', desc: 'Dunas, cactus y templos de arenisca bajo un sol de plomo.',
+    indoor: false, wallH: 4, sky: 0xf2c98a, fog: [0xe8c48a, 0.012], hemi: [0xfff0d0, 0xb08850, 1.3],
+    tex: { wall: ['rock', '#a07848'], floor: ['sand', '#e0b872'] },
+    lamp: { color: 0xffa94d, int: 40, dist: 18 }, moon: 0xfff0d0, sunInt: 2.6, flicker: 0.3, drone: 40, gen: genDesert },
+  { id: 'tundra', name: 'Tundra Nevada', icon: '❄️', desc: 'Pinos cubiertos de nieve y ventisca. Las antorchas son tu única guía.',
+    indoor: false, wallH: 5, sky: 0xc9dcee, fog: [0xdbe7f2, 0.026], hemi: [0xeaf4ff, 0x9fb0c0, 1.3],
+    tex: { wall: ['rock', '#9fb4c8'], floor: ['sand', '#eef4fa'] }, trees: { trunk: 0x4a3a2a, a: 0xdce8f4, b: 0xf3f8fd }, rockC: 0xaab8c8,
+    lamp: { color: 0xffb866, int: 40, dist: 20 }, moon: 0xdfeaff, sunInt: 1.8, flicker: 0.4, drone: 33, gen: genForest },
+  { id: 'graveyard', name: 'Cementerio', icon: '🪦', desc: 'Lápidas torcidas, mausoleos y árboles muertos bajo la niebla.',
+    indoor: false, wallH: 3.4, sky: 0x0b0d16, fog: [0x141a24, 0.04], hemi: [0x8fa4d0, 0x1a2030, 1.25],
+    tex: { wall: ['rock', '#3a3f48'], floor: ['grass', '#1c2a1a'] },
+    lamp: { color: 0x8affc0, int: 45, dist: 18 }, moon: 0x9fb4e8, sunInt: 1.3, flicker: 0.6, drone: 36, gen: genGraveyard },
+  { id: 'fair', name: 'Feria Abandonada', icon: '🎡', desc: 'Noria, carruseles y puestos desiertos con luces de colores.',
+    indoor: false, wallH: 3.4, sky: 0x1a1033, fog: [0x241848, 0.02], hemi: [0xd0b8ff, 0x201830, 1.0],
+    tex: { wall: ['wood', '#7a3b5a'], floor: ['sand', '#b69a6a'] },
+    lamp: { color: 0xffe08a, int: 70, dist: 24 }, moon: 0xb09cff, sunInt: 0.8, flicker: 0.3, drone: 52, gen: genFair },
 ];
 
 export function generateMap(def, seed) {

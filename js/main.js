@@ -392,4 +392,4 @@ try {
   window.__title = title;
 } catch (err) { console.warn('Fondo 3D no disponible', err); $('bg3d').remove(); $('bgShade').remove(); }
 
-window.__game = game; // útil para depurar en la consola
+window.__game = game; window.__maps = MAP_DEFS; // útil para depurar en la consola
