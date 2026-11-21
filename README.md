@@ -61,3 +61,8 @@ En el menú principal hay una sección **Códigos secretos**. El código `odio e
 - **Rendimiento (a mano):** resolución de render (40–100%), sombras, luces dinámicas, distancia de dibujado (los CPU lejanos no se dibujan ni se animan), límite de FPS (30/60), resolución automática y contador de FPS.
 - **Extras:** volumen, balanceo de cámara, invertir eje vertical, minimapa / registro de eventos / nombres de CPU, correr y apuntar «alternar», botones del ratón (cambiar disparar/apuntar), sensibilidad, color y tamaño de la mira.
 - **Controles:** reasigna avanzar, retroceder, izquierda, derecha, correr, saltar, linterna, revivir, lista de jugadores y las 3 armas. Si repites una tecla se intercambian; Esc cancela. Todo se guarda en el navegador.
+
+## 🔫 Armas (6)
+- **Revólver** y **Escopeta** con modelos rehechos (tambor con recámaras, martillo, guardamonte, corredera con estrías, cartuchos...). El arma en primera persona usa un sombreado propio que ya no se quema con la linterna.
+- **Subfusil** (automático: mantén el clic; muchas balas, aturde poco), **Francotirador** (zoom enorme con mira telescópica al apuntar, 40 de daño, muy preciso) y **Lanzagranadas** (explosión pequeña que destierra nextbots cercanos, 30 de daño al jefe).
+- Los CPU también las usan y las sueltan al morir. Hay ~29 armas por el mapa (1 bazuca, 10 revólveres, 5 subfusiles, 8 escopetas, 3 francotiradores y 3 lanzagranadas), que reaparecen a los 60 s (la bazuca no).

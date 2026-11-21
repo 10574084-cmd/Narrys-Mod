@@ -35,35 +35,112 @@ const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivi
 const CPU_LOOT_DELAY = 10;
 const BOSS_HP = 14000;
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
-const RANK = { revolver: 1, shotgun: 2, bazooka: 3 };
+const RANK = { revolver: 1, smg: 1.5, shotgun: 2, sniper: 2.5, grenade: 2.8, bazooka: 3 };
 const WEAPONS = {
-  revolver: { name: 'REVÓLVER', zoom: 0.5, dmg: 6, ammo: 6, cd: 0.55, stun: 3.2, range: 60, tol: 1.15, grow: 0.0, beam: 0xffd24d },
-  shotgun:  { name: 'ESCOPETA', zoom: 0.35, dmg: 14, ammo: 4, cd: 0.95, stun: 4.5, range: 28, tol: 1.2, grow: 0.14, beam: 0x6bd8ff },
-  bazooka:  { name: 'BAZUCA', zoom: 0.9, dmg: 90, ammo: 2, cd: 1.3, stun: 7, range: 90, tol: 1.3, grow: 0.0, beam: 0xff5a2a, blast: 9 },
+  revolver: { name: 'REVÓLVER', zoom: 0.5, dmg: 6, ammo: 6, cd: 0.55, stun: 3.2, range: 60, tol: 1.15, grow: 0.0, beam: 0xffd24d, mini: '#ffe14d', pk: 3, cpu: 0.9, fp: [0.18, -0.15, -0.35] },
+  smg:      { name: 'SUBFUSIL', zoom: 0.3, dmg: 2, ammo: 24, cd: 0.1, auto: true, stun: 1.3, range: 45, tol: 0.9, grow: 0.05, beam: 0xb0ff6b, mini: '#b0ff6b', pk: 2.4, cpu: 0.8, fp: [0.19, -0.16, -0.33] },
+  shotgun:  { name: 'ESCOPETA', zoom: 0.35, dmg: 14, ammo: 4, cd: 0.95, stun: 4.5, range: 28, tol: 1.2, grow: 0.14, beam: 0x6bd8ff, mini: '#6bd8ff', pk: 1.7, cpu: 0.6, fp: [0.2, -0.17, -0.35] },
+  sniper:   { name: 'FRANCOTIRADOR', tag: 'FRANCOT.', zoom: 2.2, scope: true, dmg: 40, ammo: 5, cd: 1.5, stun: 6, range: 150, tol: 0.45, grow: 0.0, beam: 0xc58bff, mini: '#c58bff', pk: 1.5, cpu: 0.55, fp: [0.2, -0.17, -0.42] },
+  grenade:  { name: 'LANZAGRANADAS', tag: 'GRANADAS', zoom: 0.4, dmg: 30, ammo: 5, cd: 0.9, stun: 5, range: 70, tol: 1.2, grow: 0.0, beam: 0x7dff6b, mini: '#7dff6b', blast: 5, pk: 2, cpu: 0.65, fp: [0.21, -0.18, -0.4] },
+  bazooka:  { name: 'BAZUCA', zoom: 0.9, dmg: 90, ammo: 2, cd: 1.3, stun: 7, range: 90, tol: 1.3, grow: 0.0, beam: 0xff5a2a, mini: '#ff8a2b', blast: 9, pk: 1.7, cpu: 0.6, fp: [0.2, -0.2, -0.45] },
 };
 
 function weaponModel(type) {
   const g = new THREE.Group();
   const M = (c, r = 0.45, m = 0.7) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
-  const steel = M(0x8b9096), dark = M(0x23262b, 0.5, 0.6), wood = M(0x6b4423, 0.8, 0.05), olive = M(0x4f5d3a, 0.7, 0.3);
-  const box = (w, h, d, x, y, z, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); return o; };
+  const steel = M(0x8b9096), blued = M(0x3c4350, 0.35, 0.8), dark = M(0x1d2024, 0.5, 0.6), wood = M(0x7a4a26, 0.75, 0.05), woodD = M(0x4e2f17, 0.8, 0.05),
+    olive = M(0x4f5d3a, 0.7, 0.3), brass = M(0xc9a24a, 0.35, 0.8), red = M(0xb02a2a, 0.6, 0.1), poly = M(0x2a2d31, 0.7, 0.2);
+  const box = (w, h, d, x, y, z, m, rx = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.x = rx; g.add(o); return o; };
   const cyl = (r, l, x, y, z, m, seg = 14) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), m); o.rotation.x = Math.PI / 2; o.position.set(x, y, z); g.add(o); return o; };
   if (type === 'revolver') {
-    cyl(0.017, 0.3, 0, 0.035, -0.15, steel); cyl(0.036, 0.07, 0, 0.0, -0.01, dark, 6);
-    box(0.04, 0.075, 0.12, 0, 0.0, 0.03, steel);
-    const grip = box(0.04, 0.12, 0.05, 0, -0.07, 0.085, wood); grip.rotation.x = -0.3;
-    box(0.012, 0.03, 0.012, 0, 0.082, -0.29, dark);
+    cyl(0.0145, 0.24, 0, 0.042, -0.15, blued, 16);                 // cañón
+    box(0.012, 0.009, 0.24, 0, 0.06, -0.15, steel);                // cinta superior
+    cyl(0.012, 0.15, 0, 0.018, -0.1, blued, 10);                   // varilla extractora
+    box(0.007, 0.016, 0.012, 0, 0.072, -0.262, red);               // mira delantera
+    box(0.036, 0.072, 0.1, 0, 0.012, 0.025, blued);                // armazón
+    cyl(0.032, 0.066, 0, 0.022, -0.025, steel, 18);                // tambor
+    for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; cyl(0.0068, 0.068, Math.cos(a) * 0.021, 0.022 + Math.sin(a) * 0.021, -0.025, dark, 8); } // recámaras
+    box(0.01, 0.03, 0.02, 0, 0.06, 0.07, steel, -0.5);             // martillo
+    box(0.008, 0.01, 0.07, 0, 0.082, 0.025, dark);                 // mira trasera
+    box(0.008, 0.008, 0.055, 0, -0.034, 0.045, blued);             // guardamonte
+    box(0.008, 0.03, 0.008, 0, -0.02, 0.018, blued);
+    box(0.007, 0.022, 0.008, 0, -0.018, 0.04, dark, 0.3);          // gatillo
+    box(0.038, 0.125, 0.052, 0, -0.075, 0.09, wood, -0.3);         // empuñadura
+    box(0.04, 0.02, 0.054, 0, -0.14, 0.108, woodD, -0.3);          // culata
   } else if (type === 'shotgun') {
-    cyl(0.02, 0.72, 0, 0.02, -0.36, steel); cyl(0.017, 0.62, 0, -0.012, -0.31, dark);
-    box(0.04, 0.045, 0.18, 0, -0.005, -0.22, wood);
-    box(0.045, 0.075, 0.2, 0, 0.0, 0.0, dark);
-    const st = box(0.045, 0.1, 0.3, 0, -0.03, 0.2, wood); st.rotation.x = 0.18;
-  } else {
+    cyl(0.0185, 0.78, 0, 0.034, -0.4, blued, 16);                  // cañón
+    cyl(0.0155, 0.52, 0, 0.0, -0.31, steel, 12);                   // tubo del cargador
+    box(0.008, 0.008, 0.78, 0, 0.056, -0.4, dark);                 // cinta de puntería
+    cyl(0.0055, 0.01, 0, 0.066, -0.77, brass, 8);                  // mira de punta
+    box(0.044, 0.085, 0.24, 0, 0.012, -0.02, dark);                // recibidor
+    box(0.002, 0.03, 0.07, 0.023, 0.025, -0.03, steel);            // ventana de expulsión
+    box(0.05, 0.05, 0.2, 0, -0.018, -0.33, wood);                  // guardamanos (corredera)
+    for (let k = 0; k < 5; k++) box(0.052, 0.052, 0.008, 0, -0.018, -0.26 - k * 0.035, woodD); // estrías
+    const st = box(0.04, 0.1, 0.3, 0, -0.03, 0.22, wood, 0.16);    // culata
+    box(0.042, 0.11, 0.02, 0, -0.045, 0.375, dark, 0.16);          // plancha
+    box(0.034, 0.07, 0.05, 0, -0.07, 0.07, wood, -0.35);           // empuñadura
+    box(0.008, 0.008, 0.06, 0, -0.045, -0.04, dark);               // guardamonte
+    box(0.007, 0.022, 0.008, 0, -0.03, -0.03, dark, 0.3);          // gatillo
+    for (let k = 0; k < 3; k++) cyl(0.0095, 0.05, -0.026, 0.0 + k * 0.022 - 0.01, 0.055, red, 10); // cartuchos al costado
+    void st;
+  } else if (type === 'smg') {
+    box(0.04, 0.075, 0.26, 0, 0.0, -0.06, poly);                   // cuerpo
+    box(0.032, 0.045, 0.17, 0, 0.012, -0.24, dark);                // funda del cañón
+    for (let k = 0; k < 4; k++) box(0.034, 0.012, 0.016, 0, 0.012, -0.18 - k * 0.035, blued); // ranuras
+    cyl(0.011, 0.14, 0, 0.012, -0.38, blued, 10);                  // cañón
+    box(0.03, 0.012, 0.22, 0, 0.045, -0.08, steel);                // riel superior
+    box(0.006, 0.02, 0.008, 0, 0.062, -0.18, red);                 // mira delantera
+    box(0.026, 0.02, 0.01, 0, 0.058, 0.03, dark);                  // mira trasera
+    box(0.028, 0.17, 0.05, 0, -0.115, -0.04, blued, 0.12);         // cargador
+    box(0.034, 0.1, 0.045, 0, -0.07, 0.07, poly, -0.28);           // empuñadura
+    box(0.008, 0.008, 0.06, 0, -0.04, 0.0, dark);                  // guardamonte
+    box(0.012, 0.012, 0.2, 0, 0.0, 0.2, steel);                    // culata de alambre
+    box(0.012, 0.075, 0.012, 0, -0.03, 0.3, steel);
+  } else if (type === 'sniper') {
+    cyl(0.0135, 0.62, 0, 0.032, -0.52, blued, 14);                 // cañón largo
+    cyl(0.02, 0.07, 0, 0.032, -0.84, dark, 10);                    // freno de boca
+    box(0.04, 0.068, 0.3, 0, 0.012, -0.12, dark);                  // recibidor
+    cyl(0.021, 0.24, 0, 0.098, -0.12, dark, 14);                   // mira telescópica
+    cyl(0.028, 0.05, 0, 0.098, -0.26, blued, 14); cyl(0.026, 0.045, 0, 0.098, 0.02, blued, 14); // campanas
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.023, 0.023, 0.004, 14), new THREE.MeshStandardMaterial({ color: 0x4fb8ff, emissive: 0x1b6fa8, roughness: 0.1, metalness: 0.4 }));
+    lens.rotation.x = Math.PI / 2; lens.position.set(0, 0.098, -0.288); g.add(lens);
+    box(0.012, 0.022, 0.025, 0, 0.065, -0.2, steel); box(0.012, 0.022, 0.025, 0, 0.065, -0.04, steel); // soportes
+    box(0.044, 0.095, 0.34, 0, -0.025, 0.24, olive, 0.1);          // culata
+    box(0.046, 0.03, 0.14, 0, 0.03, 0.3, olive);                   // apoyo de mejilla
+    box(0.045, 0.1, 0.02, 0, -0.04, 0.42, dark, 0.1);              // plancha
+    box(0.026, 0.07, 0.06, 0, -0.06, -0.06, blued);                // cargador
+    box(0.034, 0.08, 0.045, 0, -0.07, 0.08, olive, -0.3);          // empuñadura
+    cyl(0.006, 0.05, 0.036, 0.02, -0.01, steel, 8).rotation.set(0, 0, Math.PI / 2); // palanca del cerrojo
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.01, 8, 6), steel); knob.position.set(0.062, 0.02, -0.01); g.add(knob);
+    box(0.006, 0.006, 0.16, 0.014, -0.025, -0.5, steel, 0); box(0.006, 0.006, 0.16, -0.014, -0.025, -0.5, steel, 0); // bípode plegado
+  } else if (type === 'grenade') {
+    cyl(0.04, 0.34, 0, 0.02, -0.2, olive, 16);                     // tubo
+    cyl(0.046, 0.04, 0, 0.02, -0.38, red, 16);                     // banda roja de boca
+    cyl(0.062, 0.1, 0, 0.0, 0.0, dark, 12);                        // tambor
+    for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; cyl(0.009, 0.102, Math.cos(a) * 0.04, Math.sin(a) * 0.04, 0.0, steel, 8); }
+    box(0.05, 0.08, 0.14, 0, 0.0, 0.1, dark);                      // armazón
+    box(0.034, 0.1, 0.045, 0, -0.08, 0.1, poly, -0.25);            // empuñadura
+    box(0.03, 0.1, 0.04, 0, -0.075, -0.22, poly);                  // agarre frontal
+    box(0.012, 0.012, 0.2, 0, 0.0, 0.26, steel); box(0.012, 0.07, 0.012, 0, -0.03, 0.36, steel); // culata de alambre
+    box(0.03, 0.05, 0.012, 0, 0.074, 0.02, steel);                 // mira plegable
+    box(0.008, 0.02, 0.008, 0, 0.07, -0.34, red);
+  } else { // bazuca
     cyl(0.07, 0.95, 0, 0.0, -0.4, olive, 18); cyl(0.088, 0.1, 0, 0, -0.9, dark, 18); cyl(0.088, 0.1, 0, 0, 0.07, dark, 18);
     const cone = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 14), M(0xc23b22, 0.5, 0.2)); cone.rotation.x = -Math.PI / 2; cone.position.set(0, 0, -1.05); g.add(cone);
     box(0.04, 0.12, 0.05, 0, -0.1, -0.35, dark); box(0.025, 0.05, 0.08, 0, 0.09, -0.5, dark);
   }
   return g;
+}
+
+// textura "matcap" para el arma en primera persona: se ve con volumen sin depender de las luces (la linterna la quemaba)
+let _matcap = null;
+function matcapTex() {
+  if (_matcap) return _matcap;
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(46, 38, 4, 64, 64, 66);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#e4e4ea'); gr.addColorStop(0.85, '#a0a0aa'); gr.addColorStop(1, '#62626c');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  _matcap = new THREE.CanvasTexture(c); _matcap.colorSpace = THREE.SRGBColorSpace; return _matcap;
 }
 
 export class Game {
@@ -116,6 +193,7 @@ export class Game {
       this.yaw -= e.movementX * s; this.pitch = clamp(this.pitch + (this.extra.invert ? 1 : -1) * e.movementY * s, -1.45, 1.45);
     });
     document.addEventListener('pointerlockchange', () => {
+      this.fireHeld = false;
       if (document.pointerLockElement !== this.canvas && (this.state === 'playing' || this.state === 'dead') && !isTouch) this.onEvent('pause');
     });
     document.addEventListener('visibilitychange', () => { if (document.hidden && !isTouch && this.state === 'playing') this.onEvent('pause'); });
@@ -146,7 +224,8 @@ export class Game {
     $('btnRun').addEventListener('pointerleave', () => { this.sprintBtn = false; });
     $('btnLight').addEventListener('pointerdown', () => { if (this.flash) this.flash.visible = !this.flash.visible; });
     $('btnJump').addEventListener('pointerdown', () => { this.jumpReq = true; });
-    $('btnFire').addEventListener('pointerdown', () => { this.fireReq = true; });
+    $('btnFire').addEventListener('pointerdown', () => { this.fireReq = true; this.fireHeld = true; });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('btnFire').addEventListener(ev, () => { this.fireHeld = false; });
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('btnRevive').addEventListener(ev, () => { this.reviveBtn = false; });
     $('btnRevive').addEventListener('pointerdown', () => { this.reviveBtn = true; });
     document.addEventListener('wheel', e => { if (document.pointerLockElement === this.canvas && this.state === 'playing' && this.inv && this.player.alive) this.cycleWeapon(e.deltaY > 0 ? 1 : -1); }, { passive: true });
@@ -158,9 +237,9 @@ export class Game {
     document.addEventListener('mousedown', e => {
       if (document.pointerLockElement !== this.canvas || this.state !== 'playing') return;
       const fb = this.extra.mouse === 'right' ? 2 : 0, ab = fb === 0 ? 2 : 0;
-      if (e.button === fb) this.fireReq = true; else if (e.button === ab) this.aiming = this.extra.aimToggle ? !this.aiming : true;
+      if (e.button === fb) { this.fireReq = true; this.fireHeld = true; } else if (e.button === ab) this.aiming = this.extra.aimToggle ? !this.aiming : true;
     });
-    document.addEventListener('mouseup', e => { const ab = this.extra.mouse === 'right' ? 0 : 2; if (e.button === ab && !this.extra.aimToggle) this.aiming = false; });
+    document.addEventListener('mouseup', e => { if (e.button === (this.extra.mouse === 'right' ? 2 : 0)) this.fireHeld = false; const ab = this.extra.mouse === 'right' ? 0 : 2; if (e.button === ab && !this.extra.aimToggle) this.aiming = false; });
     document.addEventListener('contextmenu', e => { if (this.state === 'playing' || this.state === 'dead') e.preventDefault(); });
     $('btnAim').addEventListener('pointerdown', () => { this.aiming = !this.aiming; });
     $('pauseBtn').addEventListener('click', () => this.onEvent('pause'));
@@ -206,7 +285,7 @@ export class Game {
     const r = this.renderer;
     r.setPixelRatio(this.baseDpr * this.curScale);
     r.shadowMap.enabled = q.shadows; r.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.camera.fov = this.baseFov = opts.fov; this.camera.far = this.dist ? this.dist + 30 : 260; this.camera.updateProjectionMatrix(); this.aiming = false; this.aimK = 0; this.sensMul = 1;
+    this.camera.fov = this.baseFov = opts.fov; this.camera.far = this.dist ? this.dist + 30 : 260; this.camera.updateProjectionMatrix(); this.aiming = false; this.aimK = 0; this.sensMul = 1; this.fireHeld = false;
     this.buildScene();
     await this.setupPost();
     await this.buildMemes(opts.plan);
@@ -498,7 +577,7 @@ export class Game {
     if (o.boss && this.bossBot) this.bossBot.spawnAt = 6;
     if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
-        const type = i < 5 ? 'bazooka' : i < 30 ? 'shotgun' : 'revolver';
+        const type = i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
         c.gun = { type, ammo: WEAPONS[type].ammo * 2, cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
       });
     }
@@ -510,8 +589,9 @@ export class Game {
     this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
     this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
     const k = (N / 48) ** 2; // más mapa = más armas
-    const list = this.opts.boss ? [...Array(3).fill('bazooka'), ...Array(12).fill('revolver'), ...Array(10).fill('shotgun')]
-      : ['bazooka', ...Array(Math.round(13 * k)).fill('revolver'), ...Array(Math.round(8 * k)).fill('shotgun')];
+    const n = (t, c) => Array(Math.round(c)).fill(t);
+    const list = this.opts.boss ? [...n('bazooka', 3), ...n('revolver', 8), ...n('smg', 6), ...n('shotgun', 8), ...n('sniper', 4), ...n('grenade', 4)]
+      : ['bazooka', ...n('revolver', 10 * k), ...n('smg', 5 * k), ...n('shotgun', 8 * k), ...n('sniper', 3 * k), ...n('grenade', 3 * k)];
     for (const type of list) {
       let spot = null;
       for (let t = 0; t < 80 && !spot; t++) {
@@ -529,7 +609,7 @@ export class Game {
   // arma en el suelo con su rayo de luz. 'ammo' solo se indica en armas soltadas por un CPU
   makePickup(type, x, z, ammo = null) {
     const def = WEAPONS[type], mesh = new THREE.Group();
-    const model = weaponModel(type); model.scale.setScalar(type === 'revolver' ? 3 : 1.7); model.position.y = 1.0; mesh.add(model);
+    const model = weaponModel(type); model.scale.setScalar(def.pk); model.position.y = 1.0; mesh.add(model);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 8, 1, true), new THREE.MeshBasicMaterial({ color: def.beam, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
     beam.position.y = 2.6; mesh.add(beam);
     mesh.position.set(x, 0, z); this.scene.add(mesh);
@@ -552,8 +632,14 @@ export class Game {
     if (this.fpModel) { this.camera.remove(this.fpModel); this.fpModel = null; }
     if (!type) return;
     const m = this.fpModel = weaponModel(type);
-    m.traverse(o => { if (o.isMesh) { o.material.depthTest = false; o.renderOrder = 999; o.material.metalness = 0.15; o.material.color.multiplyScalar(0.3); } });
-    this.fpBase = type === 'bazooka' ? new THREE.Vector3(0.2, -0.2, -0.45) : type === 'shotgun' ? new THREE.Vector3(0.2, -0.17, -0.35) : new THREE.Vector3(0.18, -0.15, -0.35);
+    m.traverse(o => { // material con volumen que no depende de las luces
+      if (!o.isMesh) return;
+      const old = o.material, em = old.emissive && old.emissive.getHex() ? old.emissive.clone() : null;
+      o.material = new THREE.MeshMatcapMaterial({ color: old.color.clone().multiplyScalar(em ? 1 : 2.3), matcap: matcapTex(), depthTest: false });
+      if (em) o.material.color.lerp(em, 0.6);
+      o.renderOrder = 999; old.dispose();
+    });
+    this.fpBase = new THREE.Vector3(...WEAPONS[type].fp);
     m.position.copy(this.fpBase); m.rotation.y = 0.05;
     this.camera.add(m);
   }
@@ -653,7 +739,7 @@ export class Game {
       const y = cam.position.y + d.y * t;
       if (y < 0.05 || this.world.collides(cam.position.x + d.x * t, cam.position.z + d.z * t, 0.05)) { wt = t; break; }
     }
-    const loud = w.type === 'bazooka';
+    const loud = !!def.blast;
     this.sfx.burst(loud ? 0.5 : 0.18, loud ? 260 : 1400, loud ? 0.9 : 0.8, 0.7, loud ? 'lowpass' : 'bandpass');
     this.muzzleT = 0.07;
     if (loud) {
@@ -661,7 +747,7 @@ export class Game {
       this.explode(cam.position.x + d.x * t, Math.max(0.3, cam.position.y + d.y * t), cam.position.z + d.z * t, def);
     } else if (best && bt <= wt) {
       if (best.boss) this.hitBoss(best, def.dmg);
-      else { this.stunBot(best, def.stun); this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200); }
+      else { const was = best.stun > 0; this.stunBot(best, def.stun); if (!was) this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200); }
     }
     if (w.ammo <= 0) this.emptyT = 0.6;
   }
@@ -705,6 +791,7 @@ export class Game {
     for (const pk of this.pickups) if (pk.taken && !pk.dropped && (pk.type !== 'bazooka' || this.opts.boss) && this.time - pk.takenAt >= (this.opts.boss ? 20 : PICKUP_RESPAWN)) this.respawnPickup(pk);
     for (const pk of this.pickups) if (!pk.taken) { pk.ph += dt * 2; pk.model.rotation.y += dt * 1.6; pk.model.position.y = 1.0 + Math.sin(pk.ph) * 0.12; }
     // disparo
+    if (this.fireHeld && w && WEAPONS[w.type].auto && p.alive) this.fireReq = true; // armas automáticas: mantener para disparar
     if (this.fireReq) { this.fireReq = false; if (w) this.fire(); }
     if (w) {
       w.cd = Math.max(0, w.cd - dt);
@@ -734,6 +821,8 @@ export class Game {
     const nf = this.baseFov / z;
     if (Math.abs(this.camera.fov - nf) > 0.05) { this.camera.fov = nf; this.camera.updateProjectionMatrix(); }
     const cr = $('cross'); cr.classList.toggle('armed', !!this.weapon); cr.classList.toggle('aim', this.aimK > 0.5);
+    const scoped = !!(this.weapon && WEAPONS[this.weapon.type].scope && this.aimK > 0.85);
+    $('scope').classList.toggle('hidden', !scoped); if (this.fpModel) this.fpModel.visible = !scoped; if (scoped) cr.classList.remove('aim', 'armed');
     if (this.muzzle) { this.muzzleT = Math.max(0, (this.muzzleT || 0) - dt); this.muzzle.intensity = this.muzzleT > 0 ? 40 : 0; }
     // explosiones
     for (let i = this.fx.length - 1; i >= 0; i--) {
@@ -837,7 +926,7 @@ export class Game {
     }
     if (!type) return;
     const m = weaponModel(type);
-    m.scale.setScalar(type === 'revolver' ? 0.9 : 0.6); m.rotation.y = Math.PI; m.position.set(0.24, 1.12, 0.18);
+    m.scale.setScalar(WEAPONS[type].cpu); m.rotation.y = Math.PI; m.position.set(0.24, 1.12, 0.18);
     c.model.userData.body.add(m); c.gunModel = m;
   }
 
@@ -859,11 +948,11 @@ export class Game {
     const g = c.gun, def = WEAPONS[g.type];
     g.ammo--; g.cd = def.cd * (1.0 + (1 - c.skill) * 0.4); c.aim = 0;
     const dp = Math.hypot(c.x - this.player.x, c.z - this.player.z);
-    if (dp < 45) this.sfx.burst(g.type === 'bazooka' ? 0.4 : 0.15, g.type === 'bazooka' ? 260 : 1400, clamp(1 - dp / 45, 0.05, 1) * 0.6, 0.7, g.type === 'bazooka' ? 'lowpass' : 'bandpass');
+    if (dp < 45) this.sfx.burst(def.blast ? 0.4 : 0.15, def.blast ? 260 : 1400, clamp(1 - dp / 45, 0.05, 1) * 0.6, 0.7, def.blast ? 'lowpass' : 'bandpass');
     const p = clamp(1.0 - d * 0.009 * (1.3 - c.skill), 0.45, 0.97); // más precisión cuanto más hábil y más cerca
     if (Math.random() < (b.boss ? Math.min(0.95, p + 0.25) : p)) {
-      if (b.boss && g.type !== 'bazooka') this.hitBoss(b, def.dmg);
-      else if (g.type === 'bazooka') this.explode(b.x, b.boss ? 3 : 1.4, b.z, def, c.name);
+      if (b.boss && !def.blast) this.hitBoss(b, def.dmg);
+      else if (def.blast) this.explode(b.x, b.boss ? 3 : 1.4, b.z, def, c.name);
       else { this.stunBot(b, def.stun); this.feed(`🔫 ${c.name} aturdió a ${b.name}`); }
     }
     if (g.ammo <= 0) { c.gun = null; this.setCpuGunModel(c, null); }
@@ -906,7 +995,7 @@ export class Game {
     const g = c.gun && c.gun.ammo > 0 ? c.gun : null;
     if (reacted && g && !(seen.stun > 0)) {
       const def = WEAPONS[g.type];
-      if (sd >= (g.type === 'bazooka' ? 6 : 0) && sd <= def.range * 0.95 && !(sd < (seen.boss ? 9 : 4) && g.cd > 0)) { // dispara a cualquier distancia; si está muy cerca y recargando, corre
+      if (sd >= (def.blast ? 6 : 0) && sd <= def.range * 0.95 && !(sd < (seen.boss ? 9 : 4) && g.cd > 0)) { // dispara a cualquier distancia; si está muy cerca y recargando, corre
         c.mode = 'fight'; c.path = null; c.aim += dt;
         const dx = seen.x - c.x, dz = seen.z - c.z; let da = Math.atan2(dx, dz) - c.yaw; da = Math.atan2(Math.sin(da), Math.cos(da));
         c.yaw += da * Math.min(1, dt * 12);
@@ -1322,7 +1411,7 @@ export class Game {
       this.slotEls.forEach((el, i) => {
         const s = this.inv && this.inv[i];
         el.classList.toggle('empty', !s); el.classList.toggle('sel', !!s && i === this.sel);
-        el.querySelector('b').textContent = s ? WEAPONS[s.type].name : ''; el.querySelector('span').textContent = s ? s.ammo : '';
+        el.querySelector('b').textContent = s ? (WEAPONS[s.type].tag || WEAPONS[s.type].name) : ''; el.querySelector('span').textContent = s ? s.ammo : '';
       });
     }
     $('btnFire').style.visibility = this.weapon ? 'visible' : 'hidden'; $('btnAim').style.visibility = this.weapon ? 'visible' : 'hidden';
@@ -1378,8 +1467,8 @@ export class Game {
     for (const c of this.cpus) if (!c.alive && Math.hypot(c.x - p.x, c.z - p.z) < 45) { x.fillStyle = '#3ddc84'; x.fillRect(c.x * k - 2, c.z * k - 2, 4, 4); }
     for (const pk of this.pickups || []) {
       if (pk.taken) continue;
-      x.fillStyle = pk.type === 'bazooka' ? '#ff8a2b' : '#ffe14d';
-      x.fillRect(pk.x * k - (pk.type === 'bazooka' ? 3 : 2), pk.z * k - (pk.type === 'bazooka' ? 3 : 2), pk.type === 'bazooka' ? 6 : 4, pk.type === 'bazooka' ? 6 : 4);
+      const big = WEAPONS[pk.type].blast ? 6 : 4; x.fillStyle = WEAPONS[pk.type].mini;
+      x.fillRect(pk.x * k - big / 2, pk.z * k - big / 2, big, big);
     }
     const px = p.x * k, pz = p.z * k, a = Math.atan2(-Math.cos(this.yaw), -Math.sin(this.yaw));
     x.save(); x.translate(px, pz); x.rotate(a); x.fillStyle = p.alive ? '#7fe3ff' : '#888';
