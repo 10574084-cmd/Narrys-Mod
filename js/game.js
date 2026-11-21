@@ -635,7 +635,7 @@ export class Game {
     m.traverse(o => { // material con volumen que no depende de las luces
       if (!o.isMesh) return;
       const old = o.material, em = old.emissive && old.emissive.getHex() ? old.emissive.clone() : null;
-      o.material = new THREE.MeshMatcapMaterial({ color: old.color.clone().multiplyScalar(em ? 1 : 2.3), matcap: matcapTex(), depthTest: false });
+      o.material = new THREE.MeshMatcapMaterial({ color: old.color.clone().multiplyScalar(em ? 1 : 2.3), matcap: matcapTex(), depthTest: false, depthWrite: false, transparent: true });
       if (em) o.material.color.lerp(em, 0.6);
       o.renderOrder = 999; old.dispose();
     });
