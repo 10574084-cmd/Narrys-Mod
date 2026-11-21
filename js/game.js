@@ -183,7 +183,7 @@ export class Game {
       if (is('jump') && this.player && !this.player.alive) this.cycleSpectate();
       if (is('jump') && this.player && this.player.alive) this.jumpReq = true;
       if (is('run') && this.extra.runToggle) this.runLatch = !this.runLatch;
-      for (let i = 1; i <= 3; i++) if (is('slot' + i) && this.state === 'playing' && this.player && this.player.alive && this.inv) this.equip(i - 1);
+      for (let i = 1; i <= 6; i++) if (is('slot' + i) && this.state === 'playing' && this.player && this.player.alive && this.inv) this.equip(i - 1);
     });
     window.addEventListener('keyup', e => { this.keys.delete(e.code); if (this.kbIs(e.code, 'board')) this.showBoard(false); });
     window.addEventListener('blur', () => this.keys.clear());
@@ -229,7 +229,7 @@ export class Game {
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('btnRevive').addEventListener(ev, () => { this.reviveBtn = false; });
     $('btnRevive').addEventListener('pointerdown', () => { this.reviveBtn = true; });
     document.addEventListener('wheel', e => { if (document.pointerLockElement === this.canvas && this.state === 'playing' && this.inv && this.player.alive) this.cycleWeapon(e.deltaY > 0 ? 1 : -1); }, { passive: true });
-    this.slotEls = [0, 1, 2].map(i => {
+    this.slotEls = [0, 1, 2, 3, 4, 5].map(i => {
       const d = document.createElement('div'); d.className = 'slot empty'; d.innerHTML = `<i>${i + 1}</i><b></b><span></span>`;
       d.addEventListener('pointerdown', () => { if (this.state === 'playing' && this.inv) this.equip(i); });
       $('hotbar').appendChild(d); return d;
@@ -586,7 +586,7 @@ export class Game {
   // 1 bazuca en todo el mapa + 8 armas más (5 revólveres y 3 escopetas)
   spawnPickups(pick, pw) {
     const W = this.world;
-    this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
+    this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null, null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
     this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
     const k = (N / 48) ** 2; // más mapa = más armas
     const n = (t, c) => Array(Math.round(c)).fill(t);
@@ -711,7 +711,7 @@ export class Game {
   }
 
   cycleWeapon(dir) {
-    const idx = [0, 1, 2].filter(i => this.inv[i]); if (!idx.length) return;
+    const idx = this.inv.map((_, i) => i).filter(i => this.inv[i]); if (!idx.length) return;
     const cur = idx.indexOf(this.sel);
     this.equip(cur < 0 ? (dir > 0 ? idx[0] : idx[idx.length - 1]) : idx[(cur + dir + idx.length) % idx.length], true);
   }

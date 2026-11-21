@@ -135,8 +135,8 @@ let listening = null;
 function updControlHints() {
   const k = n => `<b>${keyLabel(cfg.keys[n])}</b>`, mv = `${k('fwd')}${k('left')}${k('back')}${k('right')}`;
   const run = cfg.extra.runToggle ? 'alternar correr' : 'correr', rev = cfg.keys.revive;
-  $('ctrlHint').innerHTML = `${mv} mover · ${k('run')} ${run} · ${k('jump')} saltar · <b>Ratón</b> mirar · ${k('light')} linterna · ${k('board')} jugadores · <b>Clic</b> disparar · <b>Clic derecho</b> apuntar · ${k('slot1')} ${k('slot2')} ${k('slot3')} armas · ${k('revive')} revivir · <b>Esc</b> pausa`;
-  $('ctrlFoot').innerHTML = `${mv} mover · ${k('run')} ${run} · ${k('jump')} saltar · ${k('light')} linterna · <b>Clic</b> disparar · ${k('slot1')} ${k('slot2')} ${k('slot3')} armas · ${k('revive')} revivir · <b>Esc</b> pausa`;
+  $('ctrlHint').innerHTML = `${mv} mover · ${k('run')} ${run} · ${k('jump')} saltar · <b>Ratón</b> mirar · ${k('light')} linterna · ${k('board')} jugadores · <b>Clic</b> disparar · <b>Clic derecho</b> apuntar · ${k('slot1')}–${k('slot6')} armas · ${k('revive')} revivir · <b>Esc</b> pausa`;
+  $('ctrlFoot').innerHTML = `${mv} mover · ${k('run')} ${run} · ${k('jump')} saltar · ${k('light')} linterna · <b>Clic</b> disparar · ${k('slot1')}–${k('slot6')} armas · ${k('revive')} revivir · <b>Esc</b> pausa`;
   void rev;
 }
 function renderKeys() {

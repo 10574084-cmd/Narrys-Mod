@@ -133,7 +133,7 @@ body.touch #weaponHud { bottom: auto; top: 60px; }
 #menu footer p, #menu #summary { text-shadow: 0 1px 6px #000, 0 0 12px #000; color: #d6d6e0; }
 
 #weaponHud { display: none !important; }
-#hotbar { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); display: flex; gap: 8px; }
+#hotbar { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); display: flex; gap: 6px; }
 .slot { position: relative; width: 78px; height: 58px; background: rgba(0,0,0,.55); border: 2px solid #4a4a55; border-radius: 9px; color: #fff; pointer-events: auto; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: .12s; }
 .slot i { position: absolute; top: 2px; left: 6px; font: 800 .75rem "Segoe UI", system-ui, sans-serif; font-style: normal; color: #bbb; }
 .slot b { font: 800 .62rem "Segoe UI", system-ui, sans-serif; letter-spacing: .04em; color: #ffd24d; margin-top: 8px; }
@@ -238,3 +238,4 @@ body.touch #hotbar { bottom: 92px; }
 @keyframes introPulse { 50% { transform: scale(1.05); } }
 @keyframes introFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes introBoom { 0% { transform: scale(1.12); filter: brightness(2.2); } 100% { transform: none; filter: none; } }
+body.touch .slot { width: 54px; height: 48px; } body.touch #hotbar { gap: 4px; }
