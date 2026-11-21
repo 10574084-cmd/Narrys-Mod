@@ -210,3 +210,31 @@ body.touch #hotbar { bottom: 92px; }
 #scope::before, #scope::after { content: ''; position: absolute; background: #000; }
 #scope::before { left: calc(50% - 31vmin); width: 62vmin; top: calc(50% - 1px); height: 2px; }
 #scope::after { top: calc(50% - 31vmin); height: 62vmin; left: calc(50% - 1px); width: 2px; }
+
+/* ===== INTRO ===== */
+#intro { position: fixed; inset: 0; z-index: 200; background: radial-gradient(ellipse at center, #1a0b12 0%, #040406 70%); display: flex; align-items: center; justify-content: center; text-align: center; color: #fff; overflow: hidden; --tense: 0; }
+#intro::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(255,42,61,calc(.35 * var(--tense))), transparent 65%); pointer-events: none; }
+#intro .stage { position: relative; padding: 0 6vw; max-width: 900px; animation: introIn .5s both; }
+#intro .stage > div { animation: introIn .6s both; }
+#intro .stage .l1 { animation-delay: .15s; } #intro .stage .l2 { animation-delay: .5s; }
+#intro .big .l0 { font: 900 clamp(2.4rem, 9vw, 5.5rem) Impact, 'Arial Black', sans-serif; letter-spacing: .04em; text-shadow: 0 0 24px #ff2a3d, 0 4px 0 #000; }
+#intro .big .l1 { margin-top: .6rem; font-size: clamp(1rem, 3vw, 1.6rem); opacity: .75; letter-spacing: .3em; text-transform: uppercase; }
+#intro .mid .l0 { font-size: clamp(.9rem, 2.6vw, 1.3rem); opacity: .7; letter-spacing: .25em; text-transform: uppercase; }
+#intro .mid .l1 { font: 900 clamp(3rem, 12vw, 7rem) Impact, 'Arial Black', sans-serif; color: #ffd23d; text-shadow: 0 0 30px rgba(255,210,61,.6), 0 5px 0 #7a4a00; line-height: 1.05; }
+#intro .mid .l2 { margin-top: .6rem; font-size: clamp(.9rem, 2.4vw, 1.2rem); opacity: .8; font-style: italic; }
+#intro .tip .l0 { font: 900 clamp(1.6rem, 5vw, 2.6rem) Impact, sans-serif; color: #5cf0a0; letter-spacing: .08em; }
+#intro .tip .l1 { margin-top: .8rem; font-size: clamp(1.1rem, 3.6vw, 2rem); font-weight: 700; line-height: 1.3; }
+#intro .tip .l2 { margin-top: .8rem; font-size: clamp(.95rem, 2.6vw, 1.3rem); opacity: .7; }
+#intro .start { position: relative; background: linear-gradient(#ff3a4e, #b3101f); color: #fff; border: 0; border-radius: 14px; padding: 1.1rem 2.2rem; font: 900 clamp(1.1rem, 4vw, 1.6rem) Inter, sans-serif; cursor: pointer; box-shadow: 0 0 30px rgba(255,42,61,.5); animation: introPulse 1.2s infinite; }
+#intro .start small { display: block; font-weight: 500; font-size: .6em; opacity: .8; margin-top: .3rem; }
+#intro .skip { position: absolute; right: 16px; bottom: 16px; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 10px; padding: .5rem .9rem; cursor: pointer; font: 600 .9rem Inter, sans-serif; z-index: 3; }
+#intro .skip[hidden] { display: none; }
+#intro .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#intro.drop { background: transparent; pointer-events: none; }
+#intro.drop::before, #intro.drop .stage, #intro.drop .skip { display: none; }
+#intro.drop .flash { animation: introFlash .7s ease-out both; }
+#menu.boom { animation: introBoom .6s ease-out; }
+@keyframes introIn { from { opacity: 0; transform: scale(.9) translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes introPulse { 50% { transform: scale(1.05); } }
+@keyframes introFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes introBoom { 0% { transform: scale(1.12); filter: brightness(2.2); } 100% { transform: none; filter: none; } }

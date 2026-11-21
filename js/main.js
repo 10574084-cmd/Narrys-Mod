@@ -3,6 +3,7 @@ import { MAP_DEFS, CHOCO_DEF, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
+import { runIntro, introActive, stopIntro } from './intro.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
 
 const $ = id => document.getElementById(id);
@@ -249,6 +250,7 @@ function toMenu() {
 }
 
 async function play() {
+  stopIntro();
   show('loading', true); $('loadText').textContent = 'Generando mapa…';
   game.sfx.init(MAP_DEFS[cfg.map].drone); // el clic cuenta como gesto para activar el audio
   await new Promise(r => setTimeout(r, 30));
@@ -338,6 +340,7 @@ async function chocoThumb(blob) {
   return c.toDataURL();
 }
 async function playBoss() {
+  stopIntro();
   lastBoss = true;
   show('loading', true); $('loadText').textContent = 'Invocando al jefe…';
   game.sfx.init(CHOCO_DEF.drone);
@@ -383,7 +386,7 @@ updSummary();
 $('retry').onclick = () => { show('over', false); (lastBoss ? playBoss : play)(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = toMenu;
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
-window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT') play(); });
+window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT' && !introActive()) play(); });
 
 try {
   title = new TitleScene($('bg3d'));
@@ -393,3 +396,5 @@ try {
 } catch (err) { console.warn('Fondo 3D no disponible', err); $('bg3d').remove(); $('bgShade').remove(); }
 
 window.__game = game; window.__maps = MAP_DEFS; // útil para depurar en la consola
+
+runIntro();
