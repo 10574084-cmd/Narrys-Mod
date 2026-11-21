@@ -55,3 +55,9 @@ En el menú principal hay una sección **Códigos secretos**. El código `odio e
 - **Al ganar el boss fight** (tú o tus CPUs) se desbloquean, de forma permanente en tu navegador: el nextbot **ODIO EL CHOCOLATE** (aparece en «Memes / nextbots» para usarlo en cualquier mapa) y el mapa **Backrooms Planos** (en «Mapa y partida»).
 - **ODIO EL CHOCOLATE como nextbot en cualquier mapa:** una vez desbloqueado, aparece gigante como el jefe, te persigue aunque no lo veas y tiene **barra de vida**. En «Memes / nextbots» tiene un engranaje ⚙ para elegir su **tamaño** (2–40 m) y su **vida** (1 a 10.000.000). Las armas le quitan vida y, al derrotarlo, no vuelve. Puedes poner varios.
 - **🤖 Nextbots de IA: SÍ / NO** (en «Memes / nextbots»): con SÍ se usan los nextbots de IA integrados y tus imágenes; con NO solo tus imágenes (y el jefe, si lo desbloqueaste). Los de IA se atenúan cuando están apagados.
+
+## ⚙️ Opciones: rendimiento, extras y controles
+- **⚡ Optimizar rendimiento:** un clic pone calidad Baja, resolución 75% con ajuste automático, sombras apagadas, pocas luces y distancia de dibujado media (y baja CPUs a 20 y el mapa a Normal si estaban más altos). «Restablecer» lo deja como estaba.
+- **Rendimiento (a mano):** resolución de render (40–100%), sombras, luces dinámicas, distancia de dibujado (los CPU lejanos no se dibujan ni se animan), límite de FPS (30/60), resolución automática y contador de FPS.
+- **Extras:** volumen, balanceo de cámara, invertir eje vertical, minimapa / registro de eventos / nombres de CPU, correr y apuntar «alternar», botones del ratón (cambiar disparar/apuntar), sensibilidad, color y tamaño de la mira.
+- **Controles:** reasigna avanzar, retroceder, izquierda, derecha, correr, saltar, linterna, revivir, lista de jugadores y las 3 armas. Si repites una tecla se intercambian; Esc cancela. Todo se guarda en el navegador.

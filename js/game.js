@@ -5,6 +5,7 @@ import { World } from './world.js';
 import { TEX } from './textures.js';
 import { createHumanoid, animateHumanoid, makeNameTag } from './models.js';
 import { Sfx } from './audio.js';
+import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA } from './settings.js';
 import { CPU_NAMES } from './names.js';
 
 export const isTouch = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || 'ontouchstart' in window;
@@ -76,6 +77,7 @@ export class Game {
     this.sfx = new Sfx();
     this.state = 'menu';
     this.keys = new Set();
+    this.kb = { ...DEFAULT_KEYS }; this.perf = { ...DEFAULT_PERF }; this.extra = { ...DEFAULT_EXTRA }; this.runLatch = false; this.fpsCap = 0; this.dist = 0;
     this.joy = { x: 0, y: 0 };
     this.sprintBtn = false;
     this.onEvent = () => {};
@@ -88,25 +90,30 @@ export class Game {
   }
 
   /* ------------------------------ ENTRADA ------------------------------ */
+  // ¿esta tecla es la asignada a la acción? (Shift izquierdo y derecho cuentan igual)
+  kbIs(code, act) { const k = this.kb[act]; return code === k || (act === 'run' && k.startsWith('Shift') && code.startsWith('Shift')); }
+  held(act) { const k = this.kb[act]; return this.keys.has(k) || (act === 'run' && k.startsWith('Shift') && (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'))); }
+
   bindInput() {
     window.addEventListener('keydown', e => {
       if (this.state === 'menu') return;
-      if (['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      if (['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', this.kb.board, this.kb.jump].includes(e.code)) e.preventDefault();
       if (e.repeat) return;
       this.keys.add(e.code);
-      if (e.code === 'KeyF' && this.flash) this.flash.visible = !this.flash.visible;
-      if (e.code === 'Tab') this.showBoard(true);
-      if (e.code === 'Space' && this.player && !this.player.alive) this.cycleSpectate();
-      if (e.code === 'Space' && this.player && this.player.alive) this.jumpReq = true;
-      const dm = /^(Digit|Numpad)([1-3])$/.exec(e.code);
-      if (dm && this.state === 'playing' && this.player && this.player.alive && this.inv) this.equip(+dm[2] - 1);
+      const is = a => this.kbIs(e.code, a);
+      if (is('light') && this.flash) this.flash.visible = !this.flash.visible;
+      if (is('board')) this.showBoard(true);
+      if (is('jump') && this.player && !this.player.alive) this.cycleSpectate();
+      if (is('jump') && this.player && this.player.alive) this.jumpReq = true;
+      if (is('run') && this.extra.runToggle) this.runLatch = !this.runLatch;
+      for (let i = 1; i <= 3; i++) if (is('slot' + i) && this.state === 'playing' && this.player && this.player.alive && this.inv) this.equip(i - 1);
     });
-    window.addEventListener('keyup', e => { this.keys.delete(e.code); if (e.code === 'Tab') this.showBoard(false); });
+    window.addEventListener('keyup', e => { this.keys.delete(e.code); if (this.kbIs(e.code, 'board')) this.showBoard(false); });
     window.addEventListener('blur', () => this.keys.clear());
     document.addEventListener('mousemove', e => {
       if (document.pointerLockElement !== this.canvas || this.state === 'menu') return;
       const s = this.sens * (this.sensMul || 1);
-      this.yaw -= e.movementX * s; this.pitch = clamp(this.pitch - e.movementY * s, -1.45, 1.45);
+      this.yaw -= e.movementX * s; this.pitch = clamp(this.pitch + (this.extra.invert ? 1 : -1) * e.movementY * s, -1.45, 1.45);
     });
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement !== this.canvas && (this.state === 'playing' || this.state === 'dead') && !isTouch) this.onEvent('pause');
@@ -129,7 +136,7 @@ export class Game {
     this.canvas.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || lid !== null) return; lid = e.pointerId; lx = e.clientX; ly = e.clientY; });
     this.canvas.addEventListener('pointermove', e => {
       if (e.pointerId !== lid) return;
-      this.yaw -= (e.clientX - lx) * this.sens * 1.6; this.pitch = clamp(this.pitch - (e.clientY - ly) * this.sens * 1.6, -1.45, 1.45);
+      this.yaw -= (e.clientX - lx) * this.sens * 1.6; this.pitch = clamp(this.pitch + (this.extra.invert ? 1 : -1) * (e.clientY - ly) * this.sens * 1.6, -1.45, 1.45);
       lx = e.clientX; ly = e.clientY;
     });
     const lend = e => { if (e.pointerId === lid) lid = null; };
@@ -150,9 +157,10 @@ export class Game {
     });
     document.addEventListener('mousedown', e => {
       if (document.pointerLockElement !== this.canvas || this.state !== 'playing') return;
-      if (e.button === 0) this.fireReq = true; else if (e.button === 2) this.aiming = true;
+      const fb = this.extra.mouse === 'right' ? 2 : 0, ab = fb === 0 ? 2 : 0;
+      if (e.button === fb) this.fireReq = true; else if (e.button === ab) this.aiming = this.extra.aimToggle ? !this.aiming : true;
     });
-    document.addEventListener('mouseup', e => { if (e.button === 2) this.aiming = false; });
+    document.addEventListener('mouseup', e => { const ab = this.extra.mouse === 'right' ? 0 : 2; if (e.button === ab && !this.extra.aimToggle) this.aiming = false; });
     document.addEventListener('contextmenu', e => { if (this.state === 'playing' || this.state === 'dead') e.preventDefault(); });
     $('btnAim').addEventListener('pointerdown', () => { this.aiming = !this.aiming; });
     $('pauseBtn').addEventListener('click', () => this.onEvent('pause'));
@@ -168,21 +176,37 @@ export class Game {
     if (this.composer) { this.composer.setSize(w, h); }
   }
 
+  applyScale(s) {
+    this.curScale = s; const pr = this.baseDpr * s;
+    this.renderer.setPixelRatio(pr);
+    if (this.composer) { this.composer.setPixelRatio(pr); this.composer.setSize(window.innerWidth, window.innerHeight); }
+  }
+
   /* ------------------------------ INICIO ------------------------------ */
   async start(opts, memePool) {
     this.stop();
     this.opts = opts;
     const def = this.def = opts.def || MAP_DEFS[opts.map];
-    const q = this.q = Q[opts.quality] || Q.med;
+    const q = this.q = { ...(Q[opts.quality] || Q.med) };
+    const P = this.perf = { ...DEFAULT_PERF, ...(opts.perf || {}) }, X = this.extra = { ...DEFAULT_EXTRA, ...(opts.extra || {}) };
+    this.kb = { ...DEFAULT_KEYS, ...(opts.keys || {}) }; this.runLatch = false;
+    if (P.shadows === 'off') { q.shadows = false; q.cpuShadows = false; }
+    if (P.lights === 'few') { q.lamps = Math.min(q.lamps, 1); q.botLights = Math.min(q.botLights, 1); }
+    this.fpsCap = +P.fps || 0; this.dist = +P.dist || 0; this.autoRes = !!P.auto; this._fAcc = 0; this._fN = 0;
+    this.baseDpr = Math.min(window.devicePixelRatio || 1, q.dpr); this.curScale = clamp(P.scale / 100, 0.4, 1);
+    document.body.classList.toggle('noMini', !X.minimap); document.body.classList.toggle('noFeed', !X.feed);
+    $('fpsBox').classList.toggle('hidden', !P.showFps);
+    document.documentElement.style.setProperty('--cc', X.crossColor); document.documentElement.style.setProperty('--cs', (X.crossSize / 100).toFixed(2));
+    this.sfx.setVolume(X.volume / 100);
     this.sens = 0.0022 * opts.sens;
     const seed = (Math.random() * 1e9) | 0;
     setMapSize(opts.size || 48);
     this.map = generateMap(def, seed);
     this.world = new World(this.map);
     const r = this.renderer;
-    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.dpr));
+    r.setPixelRatio(this.baseDpr * this.curScale);
     r.shadowMap.enabled = q.shadows; r.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.camera.fov = this.baseFov = opts.fov; this.camera.updateProjectionMatrix(); this.aiming = false; this.aimK = 0; this.sensMul = 1;
+    this.camera.fov = this.baseFov = opts.fov; this.camera.far = this.dist ? this.dist + 30 : 260; this.camera.updateProjectionMatrix(); this.aiming = false; this.aimK = 0; this.sensMul = 1;
     this.buildScene();
     await this.setupPost();
     await this.buildMemes(opts.plan);
@@ -545,7 +569,7 @@ export class Game {
     }
     if (target !== this.reviveTarget) this.reviveT = 0;
     this.reviveTarget = target;
-    if (target && (this.keys.has('KeyE') || this.reviveBtn)) {
+    if (target && (this.held('revive') || this.reviveBtn)) {
       this.reviveT += dt;
       if (this.reviveT >= REVIVE_TIME) { this.revive(target); this.reviveT = 0; this.reviveTarget = null; }
     } else this.reviveT = Math.max(0, this.reviveT - dt * 2);
@@ -742,7 +766,18 @@ export class Game {
   /* ------------------------------ BUCLE ------------------------------ */
   loop(now) {
     this.raf = requestAnimationFrame(t => this.loop(t));
-    const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
+    if (this.fpsCap && now - this.last < 1000 / this.fpsCap - 3) return; // límite de FPS
+    const raw = now - this.last, dt = Math.min(0.05, raw / 1000); this.last = now;
+    this._fAcc += raw; this._fN++;
+    if (this._fAcc >= 1000) { // medición de FPS (cada ~1 s) y resolución automática
+      const fps = this._fN * 1000 / this._fAcc; this._fAcc = 0; this._fN = 0;
+      if (this.perf.showFps) $('fpsBox').textContent = Math.round(fps) + ' FPS' + (this.curScale < 0.995 ? ` · ${Math.round(this.curScale * 100)}%` : '');
+      if (this.autoRes && (this.state === 'playing' || this.state === 'dead')) {
+        const target = this.fpsCap || 60;
+        if (fps < target * 0.55 && this.curScale > 0.5) this.applyScale(Math.max(0.5, this.curScale - 0.1));
+        else if (fps > target * 0.93 && this.curScale < this.perf.scale / 100 - 0.001) this.applyScale(Math.min(this.perf.scale / 100, this.curScale + 0.05));
+      }
+    }
     if (this.state === 'playing' || this.state === 'dead') this.update(dt);
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
   }
@@ -765,11 +800,13 @@ export class Game {
   updatePlayer(dt) {
     const p = this.player, k = this.keys;
     if (!p.alive) return;
-    let f = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0) - this.joy.y;
-    let s = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0) + this.joy.x;
+    const K = this.kb;
+    let f = (k.has(K.fwd) || k.has('ArrowUp') ? 1 : 0) - (k.has(K.back) || k.has('ArrowDown') ? 1 : 0) - this.joy.y;
+    let s = (k.has(K.right) || k.has('ArrowRight') ? 1 : 0) - (k.has(K.left) || k.has('ArrowLeft') ? 1 : 0) + this.joy.x;
     const len = Math.hypot(f, s); if (len > 1) { f /= len; s /= len; }
     const moving = len > 0.05;
-    const wantRun = (k.has('ShiftLeft') || k.has('ShiftRight') || this.sprintBtn || len > 0.95 && this.sprintBtn) && moving;
+    if (!moving) this.runLatch = false; // correr «alternar»: se suelta al detenerte
+    const wantRun = (this.held('run') || this.runLatch || this.sprintBtn) && moving;
     let speed = 5.0;
     if (wantRun && p.stamina > 0 && !p.tired) { speed = 10.2; p.stamina -= dt * 0.1; if (p.stamina <= 0) p.tired = true; }
     else { p.stamina = Math.min(1, p.stamina + dt * (moving ? 0.1 : 0.2)); if (p.tired && p.stamina > 0.3) p.tired = false; }
@@ -1170,8 +1207,9 @@ export class Game {
     const cam = this.camera, p = this.player, t = this.time;
     let fx = p.x, fz = p.z;
     if (p.alive) {
-      cam.position.set(p.x, 1.65 + p.y + Math.sin(p.bob) * (p.running ? 0.06 : 0.035) * (p.moving ? 1 : 0), p.z);
-      cam.rotation.set(this.pitch, this.yaw, Math.sin(p.bob * 0.5) * 0.004 * (p.moving ? 1 : 0));
+      const bk = this.extra.bob ? 1 : 0;
+      cam.position.set(p.x, 1.65 + p.y + Math.sin(p.bob) * (p.running ? 0.06 : 0.035) * (p.moving ? 1 : 0) * bk, p.z);
+      cam.rotation.set(this.pitch, this.yaw, Math.sin(p.bob * 0.5) * 0.004 * (p.moving ? 1 : 0) * bk);
       if (this.flash) this.flash.position.set(0.14, -0.1 + Math.sin(p.bob) * 0.004, 0);
     } else {
       const alive = this.cpus.filter(c => c.alive);
@@ -1188,9 +1226,12 @@ export class Game {
 
     // humanoides
     for (const c of this.cpus) {
+      const d = Math.hypot(c.x - cam.position.x, c.z - cam.position.z), far = this.dist > 0 && d > this.dist;
+      c.model.visible = !far; // lejos: no se dibuja ni se anima (más FPS)
+      if (far) continue;
       c.model.position.x = c.x; c.model.position.z = c.z;
       if (c.alive) { c.model.position.y = 0; c.model.rotation.y = c.yaw; animateHumanoid(c.model, dt, c.spd, false); }
-      if (c.alive) { const d = Math.hypot(c.x - cam.position.x, c.z - cam.position.z); c.tag.visible = d < 26; }
+      if (c.alive) c.tag.visible = this.extra.names && d < 26;
     }
     const nowMs = performance.now();
     for (const m of this.animated || []) if (nowMs - (m.last || 0) > 50) { m.last = nowMs; m.update(); }

@@ -82,7 +82,8 @@
 
       <!-- OPCIONES -->
       <div id="scrOpts" class="screen hidden">
-        <section class="panel narrow">
+        <div class="cols">
+        <section class="panel">
           <h2>Gráficos</h2>
           <label>Calidad
             <select id="pQual">
@@ -94,11 +95,53 @@
           </label>
           <p class="hint" id="rtHint">Raytracing (aprox.): oclusión ambiental, reflejos de entorno y sombras suaves. No es path tracing real.</p>
           <label>Campo de visión <b id="vFov"></b><input id="pFov" type="range" min="60" max="110" value="80"></label>
+
+          <h2>Rendimiento</h2>
+          <div class="row"><button id="btnPerf" class="btn" type="button">⚡ Optimizar rendimiento</button><button id="btnPerfReset" class="btn small ghost" type="button">Restablecer</button></div>
+          <p class="hint" id="perfMsg">Un clic y se ajusta todo para ir más fluido (también puedes cambiarlo a mano).</p>
+          <label>Resolución de render <b id="vScale"></b><input id="pScale" type="range" min="40" max="100" step="5"></label>
+          <label>Sombras
+            <select id="pShadows"><option value="on">Según la calidad</option><option value="off">Desactivadas (más FPS)</option></select>
+          </label>
+          <label>Luces dinámicas
+            <select id="pLights"><option value="norm">Normales</option><option value="few">Pocas (más FPS)</option></select>
+          </label>
+          <label>Distancia de dibujado
+            <select id="pDist"><option value="0">Ilimitada</option><option value="110">Larga</option><option value="70">Media</option><option value="40">Corta (más FPS)</option></select>
+          </label>
+          <label>Límite de FPS
+            <select id="pFps"><option value="0">Sin límite</option><option value="60">60</option><option value="30">30 (ahorra batería)</option></select>
+          </label>
+          <label class="check"><input id="pAuto" type="checkbox"> Resolución automática (baja sola si hay tirones)</label>
+          <label class="check"><input id="pShowFps" type="checkbox"> Mostrar FPS en pantalla</label>
+        </section>
+
+        <section class="panel">
+          <h2>Extras</h2>
+          <label>Volumen <b id="vVol"></b><input id="pVol" type="range" min="0" max="100" step="5"></label>
+          <label class="check"><input id="pBob" type="checkbox"> Balanceo de cámara al caminar</label>
+          <label class="check"><input id="pInv" type="checkbox"> Invertir eje vertical del ratón</label>
+          <label class="check"><input id="pMini" type="checkbox"> Mostrar minimapa</label>
+          <label class="check"><input id="pFeed" type="checkbox"> Mostrar registro de eventos</label>
+          <label class="check"><input id="pNames" type="checkbox"> Mostrar nombres de los CPU</label>
+          <label class="check"><input id="pRunT" type="checkbox"> Correr: pulsar para alternar (en vez de mantener)</label>
+          <label class="check"><input id="pAimT" type="checkbox"> Apuntar: pulsar para alternar</label>
+          <label>Botones del ratón
+            <select id="pMouse"><option value="left">Clic izq. dispara · clic der. apunta</option><option value="right">Clic der. dispara · clic izq. apunta</option></select>
+          </label>
           <label>Sensibilidad <b id="vSens"></b><input id="pSens" type="range" min="2" max="30" value="10"></label>
+          <div class="row">
+            <label style="flex:1">Color de la mira <input id="pCrossC" type="color" style="width:100%;height:36px;padding:2px;margin-top:5px;background:#121217;border:1px solid #34343e;border-radius:8px"></label>
+            <label style="flex:1">Tamaño de la mira <b id="vCrossS"></b><input id="pCrossS" type="range" min="50" max="200" step="10"></label>
+          </div>
 
           <h2>Controles</h2>
-          <p class="hint"><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>Ratón</b> mirar · <b>F</b> linterna · <b>Tab</b> jugadores · <b>Clic</b> disparar · <b>Clic derecho</b> apuntar · <b>1 2 3</b> armas · <b>E</b> revivir · <b>Esc</b> pausa</p>
+          <p class="hint" style="margin-top:0">Toca un botón y pulsa la tecla que quieras. <b>Esc</b> cancela. Si repites una tecla, se intercambian.</p>
+          <div id="keyList"></div>
+          <div class="row" style="margin-top:8px"><button id="btnKeysReset" class="btn small ghost" type="button">Restablecer controles</button></div>
+          <p class="hint" id="ctrlHint"></p>
         </section>
+        </div>
         <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>
 
@@ -133,7 +176,7 @@
       </div>
 
       <footer>
-        <p><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>F</b> linterna · <b>Clic</b> disparar · <b>1 2 3</b> armas · <b>E</b> revivir · <b>Esc</b> pausa</p>
+        <p id="ctrlFoot"><b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>F</b> linterna · <b>Clic</b> disparar · <b>1 2 3</b> armas · <b>E</b> revivir · <b>Esc</b> pausa</p>
         <p class="hint">Busca armas en el suelo (hay 1 bazuca en todo el mapa). Sobrevive hasta que acabe el tiempo. Los nextbots persiguen al jugador más cercano y cada vez van más rápido.</p>
       </footer>
     </div>
@@ -145,6 +188,7 @@
   <div id="hud" class="hidden">
     <div id="hudTop"><span id="hudTime">4:00</span><span id="hudAlive">👥 0</span></div>
     <div id="bossBar" class="hidden"><div class="bossName">🍫 <span id="bossNm">ODIO EL CHOCOLATE</span> <span id="bossHp"></span></div><div class="bossTrack"><div id="bossFill"></div></div></div>
+    <div id="fpsBox" class="hidden"></div>
     <div id="toast"></div>
     <div id="feed"></div>
     <canvas id="mini" width="150" height="150"></canvas>

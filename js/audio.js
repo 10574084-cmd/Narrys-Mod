@@ -1,13 +1,13 @@
 // Sonido 100% procedural con WebAudio (no necesita archivos)
 export class Sfx {
-  constructor() { this.ctx = null; }
+  constructor() { this.ctx = null; this.vol = 1; }
 
   init(droneFreq = 50) {
     try {
       if (this.ctx) { this.ctx.resume(); this.setDrone(droneFreq); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       const c = this.ctx = new AC();
-      this.master = c.createGain(); this.master.gain.value = 0.7; this.master.connect(c.destination);
+      this.master = c.createGain(); this.master.gain.value = 0.7 * this.vol; this.master.connect(c.destination);
       const len = c.sampleRate * 2;
       this.noise = c.createBuffer(1, len, c.sampleRate);
       const d = this.noise.getChannelData(0);
@@ -103,7 +103,8 @@ export class Sfx {
     });
   }
 
-  mute(m) { if (this.master) this.master.gain.value = m ? 0 : 0.7; }
+  setVolume(v) { this.vol = Math.max(0, Math.min(1, v)); if (this.master) this.master.gain.value = 0.7 * this.vol; }
+  mute(m) { if (this.master) this.master.gain.value = m ? 0 : 0.7 * this.vol; }
   suspend() { if (this.ctx) this.ctx.suspend(); }
   resume() { if (this.ctx) this.ctx.resume(); }
 }

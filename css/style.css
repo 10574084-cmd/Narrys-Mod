@@ -169,11 +169,11 @@ body.touch #hotbar { bottom: 92px; }
 #loseLink .btn { display: inline-block; text-decoration: none; }
 
 /* mira del arma */
-#cross.armed { width: 22px; height: 22px; margin: -11px; border-radius: 0; background: none; opacity: .9; transition: all .12s;
+#cross.armed { width: calc(22px * var(--cs, 1)); height: calc(22px * var(--cs, 1)); margin: calc(-11px * var(--cs, 1)); border-radius: 0; background: none; opacity: .9; transition: all .12s;
   background:
-    linear-gradient(#fff,#fff) 50% 0 / 2px 7px no-repeat, linear-gradient(#fff,#fff) 50% 100% / 2px 7px no-repeat,
-    linear-gradient(#fff,#fff) 0 50% / 7px 2px no-repeat, linear-gradient(#fff,#fff) 100% 50% / 7px 2px no-repeat; filter: drop-shadow(0 0 2px #000); }
-#cross.armed.aim { width: 46px; height: 46px; margin: -23px; border: 2px solid rgba(255,255,255,.85); border-radius: 50%;
+    linear-gradient(var(--cc, #fff), var(--cc, #fff)) 50% 0 / 2px 7px no-repeat, linear-gradient(var(--cc, #fff), var(--cc, #fff)) 50% 100% / 2px 7px no-repeat,
+    linear-gradient(var(--cc, #fff), var(--cc, #fff)) 0 50% / 7px 2px no-repeat, linear-gradient(var(--cc, #fff), var(--cc, #fff)) 100% 50% / 7px 2px no-repeat; filter: drop-shadow(0 0 2px #000); }
+#cross.armed.aim { width: calc(46px * var(--cs, 1)); height: calc(46px * var(--cs, 1)); margin: calc(-23px * var(--cs, 1)); border: 2px solid var(--cc, #fff); border-radius: 50%;
   background: radial-gradient(circle, #ff3b3b 0 2px, transparent 3px); filter: drop-shadow(0 0 3px #000); }
 #btnAim { position: absolute; right: 200px; bottom: 140px; width: 64px; height: 64px; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(120,200,255,.7); background: rgba(120,200,255,.2); color: #fff; font-size: 1.5rem; }
 
@@ -190,3 +190,16 @@ body.touch #hotbar { bottom: 92px; }
 
 .aiRow { align-items: center; margin: 8px 0; }
 .meme.off { opacity: .35; filter: grayscale(1); }
+
+/* opciones: rendimiento, extras y controles */
+.noMini #mini { display: none; }
+.noFeed #feed { display: none; }
+#fpsBox { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); margin-top: 38px; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,.55); font: 700 12px/1.4 monospace; color: #9dffb0; pointer-events: none; }
+#fpsBox.hidden { display: none; }
+.keyRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid #22222a; font-size: .88rem; }
+.keyBtn { min-width: 96px; padding: 5px 10px; border-radius: 8px; border: 1px solid #3a3a46; background: #1a1a22; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.keyBtn:hover { border-color: var(--red); }
+.keyBtn.wait { background: var(--red); border-color: var(--red); animation: kpulse .8s infinite alternate; }
+@keyframes kpulse { to { opacity: .6; } }
+#scrOpts .cols { grid-template-columns: 1fr 1fr; }
+@media (max-width: 820px) { #scrOpts .cols { grid-template-columns: 1fr; } }

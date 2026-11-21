@@ -2,6 +2,7 @@
 import { MAP_DEFS, CHOCO_DEF, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
+import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
 
 const $ = id => document.getElementById(id);
@@ -14,6 +15,9 @@ let title = null;
 if (cfg.ai === undefined) cfg.ai = !cfg.only; // antes: «usar solo mis imágenes»
 const isAI = e => !!e.builtin && e.id !== 'secret-choco'; // los de IA = los que hice yo (el jefe no cuenta)
 cfg.choco = Object.assign({ size: 9, hp: 14000 }, cfg.choco || {});
+cfg.perf = Object.assign({}, DEFAULT_PERF, cfg.perf || {});
+cfg.extra = Object.assign({}, DEFAULT_EXTRA, cfg.extra || {});
+cfg.keys = Object.assign({}, DEFAULT_KEYS, cfg.keys || {});
 const UKEY = 'narrysmod_unlocks_v1';
 const unlocks = (() => { try { return JSON.parse(localStorage.getItem(UKEY) || '{}'); } catch { return {}; } })();
 const saveUnl = () => { try { localStorage.setItem(UKEY, JSON.stringify(unlocks)); } catch { /* nada */ } };
@@ -83,6 +87,81 @@ $('btnAI').onclick = () => { cfg.ai = !cfg.ai; save(); updAI(); renderMemes(); }
 updAI();
 function updHint() { $('rtHint').style.display = cfg.quality === 'rt' ? 'block' : 'none'; }
 updHint();
+
+/* ---------- rendimiento, extras y controles ---------- */
+const OPTS = [ // [id, objeto, clave, tipo, etiqueta de valor, formato]
+  ['pScale', cfg.perf, 'scale', 'num', 'vScale', v => v + '%'], ['pShadows', cfg.perf, 'shadows', 'str'], ['pLights', cfg.perf, 'lights', 'str'],
+  ['pDist', cfg.perf, 'dist', 'num'], ['pFps', cfg.perf, 'fps', 'num'], ['pAuto', cfg.perf, 'auto', 'chk'], ['pShowFps', cfg.perf, 'showFps', 'chk'],
+  ['pVol', cfg.extra, 'volume', 'num', 'vVol', v => v + '%'], ['pBob', cfg.extra, 'bob', 'chk'], ['pInv', cfg.extra, 'invert', 'chk'],
+  ['pMini', cfg.extra, 'minimap', 'chk'], ['pFeed', cfg.extra, 'feed', 'chk'], ['pNames', cfg.extra, 'names', 'chk'],
+  ['pRunT', cfg.extra, 'runToggle', 'chk'], ['pAimT', cfg.extra, 'aimToggle', 'chk'], ['pMouse', cfg.extra, 'mouse', 'str'],
+  ['pCrossC', cfg.extra, 'crossColor', 'str'], ['pCrossS', cfg.extra, 'crossSize', 'num', 'vCrossS', v => v + '%'],
+];
+function refreshOpts() {
+  for (const [id, obj, key, kind, out, f] of OPTS) {
+    const el = $(id); if (kind === 'chk') el.checked = !!obj[key]; else el.value = obj[key];
+    if (out) $(out).textContent = f(obj[key]);
+  }
+}
+for (const [id, obj, key, kind, out, f] of OPTS) {
+  const el = $(id), ev = kind === 'chk' || el.tagName === 'SELECT' ? 'onchange' : 'oninput';
+  el[ev] = () => { obj[key] = kind === 'chk' ? el.checked : kind === 'num' ? +el.value : el.value; if (out) $(out).textContent = f(obj[key]); save(); };
+}
+refreshOpts();
+
+function syncGameInputs() { // vuelve a mostrar en el menú valores que el botón de rendimiento pudo cambiar
+  $('pQual').value = cfg.quality; $('pCpus').value = cfg.cpus; $('vCpus').textContent = cfg.cpus; $('pSize').value = cfg.size;
+  updHint(); updSummary();
+}
+$('btnPerf').onclick = () => {
+  const ch = [];
+  if (cfg.quality !== 'low') { ch.push(`calidad ${cfg.quality === 'rt' ? 'Raytracing' : cfg.quality === 'high' ? 'Alta' : 'Media'} → Baja`); cfg.quality = 'low'; }
+  Object.assign(cfg.perf, { ...DEFAULT_PERF, scale: 75, shadows: 'off', lights: 'few', dist: 70, auto: true });
+  ch.push('resolución 75% (y automática)', 'sombras apagadas', 'pocas luces', 'distancia de dibujado media');
+  const maxCpus = isTouch ? 10 : 20;
+  if (cfg.cpus > maxCpus) { ch.push(`CPUs ${cfg.cpus} → ${maxCpus}`); cfg.cpus = maxCpus; }
+  if (cfg.size > 48) { ch.push('mapa Normal'); cfg.size = 48; }
+  save(); refreshOpts(); syncGameInputs();
+  $('perfMsg').textContent = '⚡ Listo: ' + ch.join(' · ') + '.';
+};
+$('btnPerfReset').onclick = () => {
+  Object.assign(cfg.perf, DEFAULT_PERF); cfg.quality = isTouch ? 'med' : 'high'; save(); refreshOpts(); syncGameInputs();
+  $('perfMsg').textContent = 'Rendimiento restablecido a los valores por defecto.';
+};
+
+// controles: tocar un botón y pulsar la tecla nueva
+let listening = null;
+function updControlHints() {
+  const k = n => `<b>${keyLabel(cfg.keys[n])}</b>`, mv = `${k('fwd')}${k('left')}${k('back')}${k('right')}`;
+  const run = cfg.extra.runToggle ? 'alternar correr' : 'correr', rev = cfg.keys.revive;
+  $('ctrlHint').innerHTML = `${mv} mover · ${k('run')} ${run} · ${k('jump')} saltar · <b>Ratón</b> mirar · ${k('light')} linterna · ${k('board')} jugadores · <b>Clic</b> disparar · <b>Clic derecho</b> apuntar · ${k('slot1')} ${k('slot2')} ${k('slot3')} armas · ${k('revive')} revivir · <b>Esc</b> pausa`;
+  $('ctrlFoot').innerHTML = `${mv} mover · ${k('run')} ${run} · ${k('jump')} saltar · ${k('light')} linterna · <b>Clic</b> disparar · ${k('slot1')} ${k('slot2')} ${k('slot3')} armas · ${k('revive')} revivir · <b>Esc</b> pausa`;
+  void rev;
+}
+function renderKeys() {
+  const box = $('keyList'); box.innerHTML = '';
+  for (const [act, label] of ACTIONS) {
+    const row = document.createElement('div'); row.className = 'keyRow';
+    const sp = document.createElement('span'); sp.textContent = label;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'keyBtn'; b.textContent = keyLabel(cfg.keys[act]);
+    b.onclick = () => { stopListen(); listening = { act, b }; b.textContent = 'Pulsa una tecla…'; b.classList.add('wait'); };
+    row.append(sp, b); box.appendChild(row);
+  }
+  updControlHints();
+}
+function stopListen() { if (listening) { listening.b.classList.remove('wait'); listening = null; renderKeys(); } }
+window.addEventListener('keydown', e => {
+  if (!listening) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (e.code === 'Escape') { stopListen(); return; }
+  const { act } = listening, old = cfg.keys[act];
+  const other = Object.keys(cfg.keys).find(a => a !== act && cfg.keys[a] === e.code);
+  if (other) cfg.keys[other] = old; // intercambia con la acción que ya usaba esa tecla
+  cfg.keys[act] = e.code; save(); listening.b.classList.remove('wait'); listening = null; renderKeys();
+}, true);
+$('btnKeysReset').onclick = () => { listening = null; Object.assign(cfg.keys, DEFAULT_KEYS); save(); renderKeys(); };
+renderKeys();
+
 async function getChocoEntry() {
   if (!chocoCache) {
     const blob = await (await fetch('assets/odio-el-chocolate.mp4')).blob();
@@ -183,7 +262,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -266,7 +345,7 @@ async function playBoss() {
   try {
     const entry = await getChocoEntry();
     $('loadText').textContent = 'Construyendo la arena…';
-    await game.start({ boss: true, choco: { size: 9, hp: 14000 }, def: CHOCO_DEF, map: 0, cpus: 100, bots: 1, plan: [entry], diff: 1, size: 64, dur: 600,
+    await game.start({ boss: true, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: 9, hp: 14000 }, def: CHOCO_DEF, map: 0, cpus: 100, bots: 1, plan: [entry], diff: 1, size: 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, [entry]);
   } catch (err) {
     console.error(err); show('loading', false);
