@@ -4,6 +4,7 @@ import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
 import * as A from './achievements.js';
+import * as Shop from './shop.js';
 import { runIntro, introActive, stopIntro } from './intro.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
 
@@ -281,7 +282,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await game.start({ map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await game.start({ skin: Shop.currentSkin(), bought: Shop.takeStock(), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -343,7 +344,7 @@ game.onEvent = (type, d) => {
   } else if (type === 'dead') {
     A.add('deaths'); A.unlock('first_death');
     unlockMsg(''); $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
-    $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
+    $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.` + earn(Math.floor(d.time / 15));
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
     { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco'; // en la pelea del jefe el botón de revivir sale siempre, y fondo negro
       show('choco', game.state === 'dead' && !game.chocoUsed && (troll || !!unlocks.choco)); show('loseLink', troll); $('over').classList.toggle('troll', troll);
@@ -356,12 +357,12 @@ game.onEvent = (type, d) => {
       if (cfg.dur >= 600) A.unlock('win_long'); if (cfg.size >= 80) A.unlock('win_huge');
     }
     bossReward(); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); } $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
-    $('overText').textContent = game.bossDead ? `¡Derrotaste a ${bossName()} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
+    $('overText').textContent = game.bossDead ? `¡Derrotaste a ${bossName()} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` + roundCoins(d, true) : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.` + roundCoins(d, true);
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock(); rushAdvance();
   } else if (type === 'end') {
     bossReward(); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); }
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
-    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${bossName()}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
+    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${bossName()}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` + roundCoins(d, false) : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.` + roundCoins(d, false);
     $('spectHint').textContent = ''; show('over', true); rushAdvance();
   }
 };
@@ -408,7 +409,7 @@ async function playBoss(kind = 'choco', inRush = false) {
   try {
     const plan = fin ? [await getChocoEntry(), ...(await getExeEntries()), await getVerityEntry()] : exe ? await getExeEntries() : ver ? [await getVerityEntry()] : [await getChocoEntry()];
     $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
-    await game.start({ boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 55 CPUs' : undefined,
+    await game.start({ skin: Shop.currentSkin(), bought: Shop.takeStock(), boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 55 CPUs' : undefined,
       perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: fin ? 7 : 9, hp: fin ? 80000 : 14000 }, def, map: 0, cpus: fin ? 150 : ver ? 55 : 100, intro: fin, allBazooka: fin, bossDelay: ver ? 12 : 0, armStrong: ver, bossRamp: ver ? 40 : 0, hpMul: fin ? 8 : 1, bots: plan.length, plan, diff: 1, size: fin ? 80 : ver ? 42 : 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {
@@ -466,6 +467,31 @@ runIntro();
 
 /* ---------- logros: botón del trofeo, pantalla y aviso ---------- */
 const updTrophy = () => { $('trophyN').textContent = `${A.count()}/${A.ACH.length}`; };
+function renderShop() {
+  const st = Shop.state();
+  $('shopCoins').textContent = st.coins; $('coinN').textContent = st.coins;
+  const sl = $('skinList'); sl.innerHTML = '';
+  for (const k of Shop.SKINS) {
+    const own = st.owned.includes(k.id), b = document.createElement('button'); b.type = 'button';
+    b.className = 'shopItem' + (st.skin === k.id ? ' on' : '') + (!own && st.coins < k.price ? ' poor' : '');
+    b.innerHTML = `<span class="ic">${k.icon}</span>${k.name}<small>${st.skin === k.id ? '✔ Equipada' : own ? 'Equipar' : k.price + ' 🪙'}</small>`;
+    b.onclick = () => { const r = Shop.buySkin(k.id); if (r === 'poor') alert('No tienes suficientes monedas.'); renderShop(); };
+    sl.appendChild(b);
+  }
+  const wl = $('weaponList'); wl.innerHTML = '';
+  for (const w of Shop.WEAPON_SHOP) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'shopItem' + (st.coins < w.price ? ' poor' : '');
+    b.innerHTML = `<span class="ic">${w.icon}</span>${w.name}${st.stock[w.type] ? ` ×${st.stock[w.type]}` : ''}<small>${w.price} 🪙</small>`;
+    b.onclick = () => { if (Shop.buyWeapon(w.type) === 'poor') alert('No tienes suficientes monedas.'); renderShop(); };
+    wl.appendChild(b);
+  }
+  const n = Object.values(st.stock).reduce((a, b) => a + b, 0);
+  $('stockInfo').textContent = n ? `Tienes ${n} arma${n > 1 ? 's' : ''} comprada${n > 1 ? 's' : ''}: aparecerán en el suelo a tu lado al empezar la próxima partida.` : '';
+}
+$('btnShop').onclick = $('coinBtn').onclick = () => { renderShop(); go('scrShop'); };
+renderShop();
+function earn(n) { n = Shop.addCoins(n); renderShop(); return n ? ` · +${n} 🪙` : ''; }
+const roundCoins = (d, won) => earn(Math.floor(d.time / 12) + (won ? 30 : 0) + (game.bossDead ? (lastBoss === 'final' ? 800 : 200) : 0));
 $('trophyBtn').onclick = () => { A.render($('achList'), $('achHead')); go('scrAch'); };
 let achQ = [], achBusy = false;
 function showAch() {

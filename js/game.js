@@ -295,7 +295,7 @@ export class Game {
     this.buildScene();
     await this.setupPost();
     await this.buildMemes(opts.plan);
-    this.intro = null; this.spawnEntities();
+    this.intro = null; this.tele = []; this.darkT = 0; this._dark = null; this.spawnEntities();
     this.buildMini();
     this.sfx.init(def.drone);
     this.chocoUsed = false; this.bossDead = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
@@ -623,12 +623,27 @@ export class Game {
     this.bossBot = this.bots.find(b => b.boss) || null;
     if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3 + (o.bossDelay || 0); });
     if (o.intro) this.setupIntro();
+    this.placeBought();
     if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
         const type = o.allBazooka ? 'bazooka' : o.armStrong ? (i < 25 ? 'bazooka' : i < 45 ? 'grenade' : i < 65 ? 'sniper' : 'shotgun') : i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
         c.gun = { type, ammo: WEAPONS[type].ammo * (o.allBazooka ? 6 : o.armStrong ? 4 : 2), cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
       });
     }
+  }
+
+  // armas compradas en la tienda: aparecen en el suelo alrededor del jugador
+  placeBought() {
+    const list = this.opts.bought || []; if (!list.length) return;
+    const P = this.player, W = this.world; let k = 0;
+    for (const type of list) {
+      for (let t = 0; t < 40; t++, k++) {
+        const ang = k * 2.4, rad = 2.2 + Math.floor(k / 8) * 1.2, x = P.x + Math.cos(ang) * rad, z = P.z + Math.sin(ang) * rad;
+        if (W.collides(x, z, 0.4)) continue;
+        this.pickups.push(this.makePickup(type, x, z)); k++; break;
+      }
+    }
+    this.toast(`🛒 ${list.length} arma${list.length > 1 ? 's' : ''} de la tienda en el suelo, a tu lado`, 3500);
   }
 
   // intro del jefe final: el jugador mira a los jefes "solo"; llegan los CPUs con bazucas y le regalan una
@@ -736,6 +751,7 @@ export class Game {
 
   showWeaponModel(type) {
     if (this.fpModel) { this.camera.remove(this.fpModel); this.fpModel = null; }
+    this.rainbowMats = [];
     if (!type) return;
     const m = this.fpModel = weaponModel(type);
     m.traverse(o => { // material con volumen que no depende de las luces
@@ -743,6 +759,8 @@ export class Game {
       const old = o.material, em = old.emissive && old.emissive.getHex() ? old.emissive.clone() : null;
       o.material = new THREE.MeshMatcapMaterial({ color: old.color.clone().multiplyScalar(em ? 1 : 2.3), matcap: matcapTex(), depthTest: false, depthWrite: false, transparent: true });
       if (em) o.material.color.lerp(em, 0.6);
+      const sk = this.opts && this.opts.skin; // skin comprada en la tienda
+      if (sk && (sk.tint || sk.rainbow) && !em) { if (sk.tint) o.material.color.lerp(new THREE.Color(sk.tint), 0.75); else (this.rainbowMats = this.rainbowMats || []).push(o.material); }
       o.renderOrder = 999; old.dispose();
     });
     this.fpBase = new THREE.Vector3(...WEAPONS[type].fp);
@@ -993,6 +1011,13 @@ export class Game {
         this.scene.background = col; this.scene.fog.color.copy(col); if (this.hemi) this.hemi.color.setHSL(Math.random(), 0.8, 0.7);
         if (this.floorTex) this.floorTex.offset.set(Math.random(), Math.random());
       }
+    }
+    if (this.rainbowMats && this.rainbowMats.length) { const h = (this.time * 0.35) % 1; for (const m of this.rainbowMats) m.color.setHSL(h, 0.9, 0.55); }
+    if (this.tele && this.tele.length) this.updateTele(dt);
+    if (this.darkT !== undefined && this.scene) { // apagón de Verity
+      const dk = this.darkT > 0; if (dk) this.darkT -= dt;
+      if (dk && !this._dark) { this._dark = { f: this.scene.fog.density, h: this.hemi.intensity }; }
+      if (this._dark) { const k = this.darkT > 0 ? 1 : 0; this.scene.fog.density += ((k ? this._dark.f * 5 : this._dark.f) - this.scene.fog.density) * Math.min(1, dt * 3); this.hemi.intensity += ((k ? this._dark.h * 0.2 : this._dark.h) - this.hemi.intensity) * Math.min(1, dt * 3); if (!k && Math.abs(this.scene.fog.density - this._dark.f) < 1e-4) { this.scene.fog.density = this._dark.f; this.hemi.intensity = this._dark.h; this._dark = null; } }
     }
     if (this.intro) { this.time -= dt; this.updateIntro(dt); return; }
     if (this.player.invuln > 0) this.player.invuln -= dt;
@@ -1333,10 +1358,68 @@ export class Game {
       b.target = best;
     }
     b.state = 'chase';
-    if (b.target) { b.lastX = b.target.x; b.lastZ = b.target.z; this.botGo(b, b.target.x, b.target.z, sp, dt); }
+    const busy = this.bossPhase(b, dt);
+    if (!busy && b.target) { b.lastX = b.target.x; b.lastZ = b.target.z; this.botGo(b, b.target.x, b.target.z, sp * (this.darkT > 0 ? 1.25 : 1), dt); }
     for (const e of [P, ...this.cpus]) {
       if (e.alive && Math.hypot(e.x - b.x, e.z - b.z) < b.killR + e.r) this.kill(e, b);
     }
+  }
+
+  /* ---- fases y ataques propios de cada jefe (se activan al 66 % y al 33 % de vida) ---- */
+  addTele(x, z, r, T, fn, col = 0xff2020) {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(1, 36), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.07, z); m.scale.set(r, r, 1); this.scene.add(m);
+    this.tele.push({ m, x, z, r, t: 0, T, fn });
+  }
+  updateTele(dt) {
+    for (let i = this.tele.length - 1; i >= 0; i--) {
+      const e = this.tele[i]; e.t += dt;
+      e.m.material.opacity = 0.2 + 0.3 * Math.abs(Math.sin(e.t * 9)); e.m.scale.setScalar(e.r * (0.4 + 0.6 * Math.min(1, e.t / e.T)));
+      if (e.t >= e.T) { this.scene.remove(e.m); e.m.geometry.dispose(); e.m.material.dispose(); this.tele.splice(i, 1); e.fn(e); }
+    }
+  }
+  killIn(x, z, r, by) { for (const e of [this.player, ...this.cpus]) if (e.alive && Math.hypot(e.x - x, e.z - z) < r + e.r) this.kill(e, by); }
+  freeSpotNear(x, z, rad) {
+    for (let t = 0; t < 30; t++) { const a = Math.random() * 6.28, px = x + Math.cos(a) * rad, pz = z + Math.sin(a) * rad; if (!this.world.collides(px, pz, 0.8)) return { x: px, z: pz }; }
+    return null;
+  }
+  bossPhase(b, dt) {
+    const ratio = b.hp / b.hpMax, ph = ratio < 0.33 ? 3 : ratio < 0.66 ? 2 : 1;
+    if (ph !== (b.fase || 1)) { b.fase = ph; b.atkT = 2.5; b.flash = 0.6; this.toast(`⚠️ ${b.name}: ¡FASE ${ph}!`, 2600); this.feed(`⚠️ ${b.name} entró en la FASE ${ph}`, true); this.sfx.spawn(); }
+    if ((b.fase || 1) < 2) return false;
+    const id = b.meme && b.meme.id, tg = b.target;
+    if (b.busy > 0) { // en pleno ataque: no persigue
+      b.busy -= dt;
+      if (b.dash > 0) { b.dash -= dt; const sp = 30 * dt; this.world.move(b, b.dx * sp, b.dz * sp); }
+      return true;
+    }
+    b.atkT = (b.atkT == null ? 3 : b.atkT) - dt;
+    if (b.atkT > 0 || !tg) return false;
+    const hard = ph === 3;
+    if (id === 'secret-exe-sonic') { // DASH: se carga y atraviesa el mapa en línea recta
+      const dx = tg.x - b.x, dz = tg.z - b.z, d = Math.hypot(dx, dz) || 1; b.dx = dx / d; b.dz = dz / d; b.busy = 1.4; b.dash = 0.5; b.atkT = hard ? 3.5 : 6;
+      b.mesh.material.color.setHex(0xff4040);
+      this.addTele(b.x + b.dx * 7, b.z + b.dz * 7, 3, 0.9, () => {}, 0xff2020);
+      b.dash = 0; setTimeout(() => { if (!b.dead) b.dash = 0.5; }, 900);
+      this.feed('💨 ¡SONIC.EXE va a embestir!');
+    } else if (id === 'secret-exe-tails') { // TELETRANSPORTE detrás de su objetivo
+      const sp = this.freeSpotNear(tg.x, tg.z, 3.5); b.atkT = hard ? 4 : 7; if (!sp) return false;
+      b.busy = 1.0; this.addTele(sp.x, sp.z, 1.8, 0.95, () => { if (!b.dead) { b.x = sp.x; b.z = sp.z; b.lx = b.x; b.lz = b.z; b.flash = 0.3; b.path = null; } }, 0x40a0ff);
+    } else if (id === 'secret-exe-knuckles') { // PISOTÓN con área
+      const R = hard ? 8.5 : 6.5; b.busy = 1.3; b.atkT = hard ? 5 : 8;
+      this.addTele(b.x, b.z, R, 1.2, e => { this.explode(e.x, 0.5, e.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(e.x, e.z, R, b); }, 0xff7a20);
+      this.feed('👊 ¡KNUCKLES.EXE va a pisotear el suelo!');
+    } else if (id === 'secret-verity') { // APAGÓN: luces fuera y más veloz
+      b.atkT = hard ? 11 : 16; this.darkT = hard ? 10 : 7; this.toast('💡 ¡Verity apagó las luces!', 2500);
+    } else if (id === 'secret-choco') { // LLUVIA de chocolate: zonas marcadas que explotan
+      b.atkT = hard ? 2.2 : 3.4; const n = hard ? 5 : 3;
+      const pool = [this.player, ...this.cpus.filter(c => c.alive)].filter(e => e.alive);
+      for (let i = 0; i < n && pool.length; i++) {
+        const e = pool[Math.floor(Math.random() * pool.length)];
+        this.addTele(e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, 3.4, 1.4, t => { this.explode(t.x, 0.5, t.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(t.x, t.z, 3.4, b); }, 0x7a4a20);
+      }
+    } else b.atkT = 6;
+    return false;
   }
 
   hitBoss(b, dmg) {

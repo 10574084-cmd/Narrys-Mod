@@ -95,3 +95,9 @@ Si pierdes el boss fight del chocolate, en vez de los botones normales la pantal
 ## ??? (jefe final)
 Al derrotar a los tres jefes (Odio el chocolate, Sonic.exe y amigos, Verity) aparece el botón **???** en el menú principal. Te hace derrotarlos otra vez seguidos y, al final, aparecen **todos los jefes a la vez** en la **Zona Glitch** (mezcla de todos los mapas, plana y sin techo) con **150 CPUs** y la canción `assets/music/final-zone.mp3`. Da el logro secreto «???».
 El jefe final empieza con una intro: miras a los jefes «solo», llegan los 150 CPUs corriendo con bazucas, uno te regala una bazuca y empieza la batalla (todos con bazuca).
+
+## Tienda y monedas
+Ganas 🪙 al sobrevivir (1 cada 12–15 s), al ganar y al derrotar jefes (200; 800 en el jefe final). En **🛒 Tienda** (o tocando las monedas arriba) compras **skins de arma** (Dorada, Neón, Sangre, Hielo, Vacío, Arcoíris) y **armas**, que aparecen en el suelo a tu lado al empezar la siguiente partida. Datos en `narrysmod_shop_v1`.
+
+## Fases de los jefes
+Al 66 % y al 33 % de vida los jefes entran en fase 2 y 3 con ataques propios (con aviso en el suelo): Sonic.exe embiste en línea recta, Tails Doll se teletransporta junto a su objetivo, Knuckles.exe pisotea con área, Verity apaga las luces y Odio el chocolate lanza lluvia de chocolate.

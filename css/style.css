@@ -277,3 +277,12 @@ body.touch .slot { width: 54px; height: 48px; } body.touch #hotbar { gap: 4px; }
 #over.troll #loseLink { margin-top: 14px; } #over.troll #loseLink p { font-size: 1.1rem; } #over.troll #loseLink .btn { font-size: 1.2rem; padding: 14px 28px; }
 #over.troll #choco { font-size: 1.2rem; padding: 14px 28px; }
 #over.rushnext .row, #over.rushnext #unlockMsg { display: none !important; }
+#coinBtn { position: fixed; top: 14px; right: 110px; z-index: 5; display: flex; align-items: center; gap: 8px; background: rgba(255,210,77,.12); border: 1px solid rgba(255,210,77,.5); color: #ffd24d; border-radius: 999px; padding: 8px 14px; font: 700 1.2rem Inter, sans-serif; cursor: pointer; backdrop-filter: blur(6px); }
+#coinBtn b { font-size: .85rem; color: #fff; }
+.shopGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.shopItem { border: 1px solid #34343e; border-radius: 10px; background: rgba(18,18,22,.9); padding: 10px; text-align: center; color: #fff; cursor: pointer; font: 600 .9rem inherit; }
+.shopItem:hover { border-color: #ffd24d; }
+.shopItem .ic { font-size: 1.8rem; display: block; }
+.shopItem small { display: block; color: #ffd24d; margin-top: 4px; }
+.shopItem.on { border-color: #4cff88; box-shadow: 0 0 12px rgba(76,255,136,.35); }
+.shopItem.poor { opacity: .55; }
