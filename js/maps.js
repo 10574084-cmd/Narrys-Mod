@@ -530,7 +530,7 @@ export const CHOCO_DEF = {
 };
 
 /* ---------------------------- GREEN HILLS .EXE (secreta) ---------------------------- */
-// colina verde corrompida: suelo de hierba, muros a cuadros, palmeras con sangre, flores con un ojo y animales muertos
+// colina verde corrompida: suelo de hierba, muros a cuadros, palmeras con sangre, flores con un ojo y charcos de sangre
 function genGreenHill(def, rng) {
   const c = ctxNew(def, rng); border(c, 4.6);
   for (let k = 0; k < 22; k++) { // terrazas a cuadros
@@ -559,19 +559,16 @@ function genGreenHill(def, rng) {
     }
   }
   const free = keepLargest(c);
-  const flatK = [7, 8];
-  for (let k = 0; k < Math.round(70 * (N / 48) ** 2); k++) { // charcos de sangre con animales muertos
+  for (let k = 0; k < Math.round(70 * (N / 48) ** 2); k++) { // charcos de sangre
     const i = free[Math.floor(rng() * free.length)], wx = ((i % N) + 0.5) * CELL + (rng() - 0.5) * 1.6, wz = (((i / N) | 0) + 0.5) * CELL + (rng() - 0.5) * 1.6;
     const s = 0.7 + rng() * 1.1;
     c.props.push({ x: wx, z: wz, rot: rng() * 6.28, parts: [part('cyl', 0, 0.03, 0, 2.2 * s, 0.05, 1.5 * s, 0x4a0505)] });
-    const n = 1 + Math.floor(rng() * 2);
-    for (let a = 0; a < n; a++) { const kk = rng() < 0.3 ? flatK[Math.floor(rng() * 2)] : Math.floor(rng() * 7); c.sprites.push({ x: wx + (rng() - 0.5) * 1.2, z: wz + (rng() - 0.5) * 1.2, k: kk, rot: rng() * 6.28 }); }
   }
   return { c, free };
 }
 
 export const GREEN_DEF = {
-  id: 'greenhill', name: 'Green Hills .EXE', icon: '🌴', desc: 'Una colina verde corrompida: palmeras con sangre, flores con ojos y animales muertos. ¡Desbloqueada!',
+  id: 'greenhill', name: 'Green Hills .EXE', icon: '🌴', desc: 'Una colina verde corrompida: palmeras con sangre, flores con ojos y charcos de sangre. ¡Desbloqueada!',
   indoor: false, wallH: 4.6, sky: 0x4a0f12, fog: [0x3d1012, 0.022], hemi: [0xffb59a, 0x3a1a14, 1.15],
   tex: { wall: ['checker', '#5a3416', '#b88a45'], floor: ['grass', '#2f6a22'] },
   lamp: { color: 0xff6050, int: 0, dist: 20 }, moon: 0xff8a70, sunInt: 1.5, flicker: 0, drone: 38, gen: genGreenHill,
