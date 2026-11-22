@@ -321,9 +321,8 @@ function rushAdvance() {
   if (!rush || !game.bossDead || lastBoss === 'final') return false;
   const next = RUSH[RUSH.indexOf(lastBoss) + 1];
   if (!next) return false;
-  $('over').classList.add('rushnext'); $('overTitle').textContent = '¡JEFE DERROTADO!';
-  $('overText').textContent = next === 'final' ? 'Siguiente: ¡EL BOSS FINAL con todos los jefes en la Zona Glitch!' : 'Preparando al siguiente jefe…';
-  rushTimer = setTimeout(() => { show('over', false); playBoss(next, true); }, 4500);
+  show('over', false); show('hud', false);
+  rushTimer = setTimeout(() => playBoss(next, true), 600);
   return true;
 }
 const bossName = () => lastBoss === 'final' ? 'TODOS LOS JEFES' : lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : lastBoss === 'verity' ? 'VERITY' : 'ODIO EL CHOCOLATE';
@@ -507,4 +506,4 @@ function renderBossKeys() {
   $('btnRush').classList.toggle('hidden', !(unlocks.choco && unlocks.exe && unlocks.verity));
 }
 renderBossKeys();
-$('btnRush').onclick = () => { if (confirm('¿Empezar ???: derrotar a todos los jefes seguidos y luego el BOSS FINAL?')) playBoss('choco', true); };
+$('btnRush').onclick = () => playBoss('choco', true);
