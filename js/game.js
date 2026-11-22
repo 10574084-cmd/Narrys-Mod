@@ -621,12 +621,12 @@ export class Game {
     for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP * (o.hpMul || 1)); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
     for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP * (o.hpMul || 1)); // Verity
     this.bossBot = this.bots.find(b => b.boss) || null;
-    if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3; });
+    if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3 + (o.bossDelay || 0); });
     if (o.intro) this.setupIntro();
     if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
-        const type = o.allBazooka ? 'bazooka' : i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
-        c.gun = { type, ammo: WEAPONS[type].ammo * (o.allBazooka ? 6 : 2), cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
+        const type = o.allBazooka ? 'bazooka' : o.armStrong ? (i < 25 ? 'bazooka' : i < 45 ? 'grenade' : i < 65 ? 'sniper' : 'shotgun') : i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
+        c.gun = { type, ammo: WEAPONS[type].ammo * (o.allBazooka ? 6 : o.armStrong ? 4 : 2), cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
       });
     }
   }
@@ -871,7 +871,7 @@ export class Game {
       const d = Math.hypot(c.x - P.x, c.z - P.z);
       if (d > bd) { bd = d; best = c; }
     }
-    b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.path = null; b.stun = secs; b.state = 'patrol'; b.goalX = null; b.target = null;
+    b.spawnedAt = this.time; b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.path = null; b.stun = secs; b.state = 'patrol'; b.goalX = null; b.target = null;
     if (b.boss) b.stun = Math.min(secs, 2);
   }
 
@@ -1324,7 +1324,8 @@ export class Game {
 
   // jefe: persigue al jugador/CPU más cercano (no necesita verlo), se enfurece al perder vida
   updateBoss(b, dt) {
-    const P = this.player, sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
+    const P = this.player; let sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
+    if (this.opts.bossRamp) sp *= Math.min(1, 0.45 + 0.55 * (this.time - (b.spawnedAt || 0)) / this.opts.bossRamp); // arranca lento para que los CPUs puedan organizarse
     b.retarget -= dt;
     if (b.retarget <= 0 || !b.target || !b.target.alive) {
       b.retarget = 0.6; let best = null, bd = 1e9;
