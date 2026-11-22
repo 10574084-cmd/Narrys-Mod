@@ -277,6 +277,10 @@ export class Game {
     $('fpsBox').classList.toggle('hidden', !P.showFps);
     document.documentElement.style.setProperty('--cc', X.crossColor); document.documentElement.style.setProperty('--cs', (X.crossSize / 100).toFixed(2));
     this.sfx.setVolume(X.volume / 100);
+    if (this.music) { this.music.pause(); this.music = null; }
+    if (opts.music) { // música de fondo del jefe
+      const a = this.music = new Audio(opts.music); a.loop = true; a.volume = Math.min(1, X.volume / 100 * 0.8); a.play().catch(() => {});
+    }
     this.sens = 0.0022 * opts.sens;
     const seed = (Math.random() * 1e9) | 0;
     setMapSize(opts.size || 48);
@@ -304,6 +308,7 @@ export class Game {
 
   stop() {
     cancelAnimationFrame(this.raf);
+    if (this.music) { this.music.pause(); this.music = null; }
     this.state = 'menu';
     if (this.composer) { try { this.composer.dispose(); } catch { /* nada */ } this.composer = null; }
     if (this.scene) {
@@ -1311,6 +1316,7 @@ export class Game {
 
   endRound() {
     if (this.endShown) return; this.endShown = true;
+    if (this.music) { this.music.pause(); this.music = null; }
     const survivors = this.alive();
     if (this.player.alive) { this.state = 'ended'; this.sfx.win(); this.onEvent('win', { survivors, total: this.cpus.length + 1, time: this.time }); }
     else { this.state = 'ended'; this.onEvent('end', { survivors, total: this.cpus.length + 1 }); }
@@ -1504,13 +1510,13 @@ export class Game {
 
   pause() {
     if (this.state === 'playing' || this.state === 'dead') {
-      this.prevState = this.state; this.state = 'paused'; this.sfx.suspend();
+      this.prevState = this.state; this.state = 'paused'; this.sfx.suspend(); if (this.music) this.music.pause();
       for (const m of this.memes ? this.memes.values() : []) if (m.video) m.video.pause();
     }
   }
   unpause() {
     if (this.state === 'paused') {
-      this.state = this.prevState || 'playing'; this.sfx.resume(); this.last = performance.now();
+      this.state = this.prevState || 'playing'; this.sfx.resume(); this.last = performance.now(); if (this.music) this.music.play().catch(() => {});
       for (const m of this.memes ? this.memes.values() : []) if (m.video) m.video.play().catch(() => {});
     }
   }

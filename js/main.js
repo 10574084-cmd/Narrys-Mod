@@ -378,7 +378,7 @@ async function playBoss(kind = 'choco') {
   try {
     const plan = exe ? await getExeEntries() : [await getChocoEntry()];
     $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
-    await game.start({ boss: true, bossKey: kind, bossMsg: exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : undefined,
+    await game.start({ boss: true, bossKey: kind, music: exe ? 'assets/music/exe-funk.mp3' : 'assets/music/choco-chase.mp3', bossMsg: exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : undefined,
       perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: 9, hp: 14000 }, def, map: 0, cpus: 100, bots: plan.length, plan, diff: 1, size: 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {

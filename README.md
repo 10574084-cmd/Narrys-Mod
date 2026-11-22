@@ -79,3 +79,6 @@ En Opciones → «Zona peligrosa» hay un botón para borrar todo lo guardado (a
 
 ## Atajos de jefes
 Cuando derrotas a un jefe secreto aparece un atajo en la esquina superior izquierda del menú para pelear contra él otra vez (con confirmación).
+
+## Música de los jefes
+Durante el boss fight suena una canción de fondo (en bucle, con el volumen de Opciones): «Odio el chocolate (Chase theme)» contra ODIO EL CHOCOLATE y «EXE FUNK» contra SONIC.EXE y sus amigos (`assets/music/`). Se pausa con el juego y se corta al terminar la ronda.
