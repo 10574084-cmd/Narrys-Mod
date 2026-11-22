@@ -335,7 +335,7 @@ game.onEvent = (type, d) => {
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
     show('choco', game.state === 'dead' && !game.chocoUsed && !!unlocks.choco); // solo si ya derrotaste al jefe
-    show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco');
+    { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco'; show('loseLink', troll); $('over').classList.toggle('troll', troll); }
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
     if (!(game.opts && game.opts.boss)) {
@@ -343,11 +343,11 @@ game.onEvent = (type, d) => {
       if (cfg.diff >= 2) A.unlock('win_hard'); if (cfg.diff >= 3) A.unlock('win_nightmare');
       if (cfg.dur >= 600) A.unlock('win_long'); if (cfg.size >= 80) A.unlock('win_huge');
     }
-    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
+    bossReward(); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); } $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
     $('overText').textContent = game.bossDead ? `¡Derrotaste a ${bossName()} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'end') {
-    bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead);
+    bossReward(); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); }
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
     $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${bossName()}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
     $('spectHint').textContent = ''; show('over', true);
@@ -422,7 +422,7 @@ $('codeIn').onkeydown = e => { if (e.key === 'Enter') tryCode(); };
 
 // la página del troll se abre en una ventana emergente (así puede moverse); si el navegador la bloquea, se abre en pestaña
 document.querySelector('#loseLink a').onclick = e => {
-  A.unlock('troll');
+  A.unlock('troll'); $('over').classList.remove('troll'); // tras clicar vuelven los botones normales
   const w = 480, h = 360, l = Math.max(0, (screen.width - w) / 2), t = Math.max(0, (screen.height - h) / 2);
   const pop = window.open(e.currentTarget.href, 'odioeltroyano', `popup=yes,width=${w},height=${h},left=${l},top=${t}`);
   if (pop) e.preventDefault();
@@ -435,7 +435,7 @@ function updSummary() {
   $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
 }
 updSummary();
-$('retry').onclick = () => { show('over', false); lastBoss ? playBoss(lastBoss) : play(); };
+$('retry').onclick = () => { show('over', false); $('over').classList.remove('troll'); lastBoss ? playBoss(lastBoss) : play(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = toMenu;
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
 window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT' && !introActive()) play(); });
