@@ -271,4 +271,8 @@ body.touch .slot { width: 54px; height: 48px; } body.touch #hotbar { gap: 4px; }
 @media (max-width: 640px) { #bossKeys button i { display: none; } }
 #bossDir { margin-top: 6px; display: inline-flex; align-items: center; gap: 8px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,210,77,.6); border-radius: 999px; padding: 2px 12px; font-weight: 800; font-size: 14px; color: #ffd24d; }
 #bossArrow { display: inline-block; font-size: 18px; line-height: 1; transition: transform .08s linear; }
-#over.troll .row { display: none; } #over.troll #loseLink { margin-top: 18px; } #over.troll #loseLink p { font-size: 1.15rem; } #over.troll #loseLink .btn { font-size: 1.2rem; padding: 14px 28px; }
+#over.troll { inset: 0; background: #000; align-items: center; padding: 18px; pointer-events: auto; }
+#over.troll .card { background: #000; border-color: #222; }
+#over.troll #retry, #over.troll #toMenu2 { display: none; }
+#over.troll #loseLink { margin-top: 14px; } #over.troll #loseLink p { font-size: 1.1rem; } #over.troll #loseLink .btn { font-size: 1.2rem; padding: 14px 28px; }
+#over.troll #choco { font-size: 1.2rem; padding: 14px 28px; }

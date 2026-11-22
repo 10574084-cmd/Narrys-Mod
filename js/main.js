@@ -334,8 +334,9 @@ game.onEvent = (type, d) => {
     unlockMsg(''); $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
-    show('choco', game.state === 'dead' && !game.chocoUsed && !!unlocks.choco); // solo si ya derrotaste al jefe
-    { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco'; show('loseLink', troll); $('over').classList.toggle('troll', troll); }
+    { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco'; // en la pelea del jefe el botón de revivir sale siempre, y fondo negro
+      show('choco', game.state === 'dead' && !game.chocoUsed && (troll || !!unlocks.choco)); show('loseLink', troll); $('over').classList.toggle('troll', troll);
+      $('choco').textContent = troll ? '🍫 Odias el chocolate' : '🍫 Odio el chocolate'; }
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
     if (!(game.opts && game.opts.boss)) {

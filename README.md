@@ -90,4 +90,4 @@ Escribe `Verity` en «Códigos secretos»: boss fight contra **VERITY** (10 000 
 En los boss fights el jefe aparece a ~22 m de ti, se ve siempre en el minimapa (círculo dorado) y bajo su barra de vida hay una flecha ▲ que apunta hacia él con la distancia. Verity es pequeña (2,2 m) y su casa usa un mapa reducido (36×36).
 
 ## Derrota contra ODIO EL CHOCOLATE
-Si pierdes el boss fight del chocolate, en vez de los botones normales sale «Odias el chocolate… o clickea aquí» con un único botón **CLICKEA AQUÍ** que abre la página de Odio el Troyano (ventana emergente). Después de clicar vuelven Reintentar y Menú.
+Si pierdes el boss fight del chocolate, en vez de los botones normales la pantalla queda en negro con el botón **🍫 Odias el chocolate** (revive una vez con el video) y **CLICKEA AQUÍ**, que abre la página de Odio el Troyano (ventana emergente). Reintentar y Menú vuelven al clicar o revivir.
