@@ -792,7 +792,10 @@ function genGlitch(def, rng) {
   srcs.forEach((s, si) => {
     for (const p of s.c.props) {
       const x = Math.floor(p.x / CELL), z = Math.floor(p.z / CELL);
-      if (inb(x, z) && owner[I(x, z)] === si && c.g[I(x, z)] === 2) c.props.push(p);
+      if (inb(x, z) && owner[I(x, z)] === si && c.g[I(x, z)] === 2) {
+        if (p.parts.some(q => q.s === 'cone')) continue; // sin árboles
+        c.props.push(p);
+      }
     }
   });
   // cualquier "objeto" sin prop real vuelve a ser suelo (por si un prop cayó en otro bloque)
@@ -807,6 +810,11 @@ function genGlitch(def, rng) {
     }
   }
   border(c, FLAT);
+  // texturas de otros mapas en varios bloques (el resto usa la textura glitch)
+  c.srcDefs = srcs.map(s => s.d);
+  c.texs = new Int8Array(N * N).fill(-1);
+  const useTex = srcs.map(() => rng() < 0.7);
+  for (let i = 0; i < N * N; i++) if (useTex[owner[i]] && srcs[owner[i]]) c.texs[i] = owner[i];
   const free = keepLargest(c);
   return { c, free };
 }
@@ -823,7 +831,7 @@ export function generateMap(def, seed) {
     const rng = makeRng((seed + attempt * 7919) >>> 0);
     const { c, free } = def.gen(def, rng);
     if (free.length < N * N * 0.22) continue;
-    return { def, seed, N, CELL, grid: c.g, hgt: c.hgt, hx: c.hx, hz: c.hz, props: c.props, lamps: c.lamps, sprites: c.sprites || [], free };
+    return { def, seed, N, CELL, grid: c.g, hgt: c.hgt, hx: c.hx, hz: c.hz, props: c.props, lamps: c.lamps, sprites: c.sprites || [], texs: c.texs, srcDefs: c.srcDefs, free };
   }
   throw new Error('No se pudo generar el mapa ' + def.id);
 }

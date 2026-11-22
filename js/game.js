@@ -358,6 +358,20 @@ export class Game {
       scene.add(ceil);
     }
 
+    // mapa glitch: trozos de suelo con las texturas de otros mapas
+    if (map.texs) {
+      const pg = new THREE.PlaneGeometry(CELL, CELL); pg.rotateX(-Math.PI / 2);
+      map.srcDefs.forEach((sd, si) => {
+        const cells = []; for (let i = 0; i < N * N; i++) if (map.texs[i] === si && map.grid[i] !== 1) cells.push(i);
+        if (!cells.length) return;
+        const t = TEX[sd.tex.floor[0]](...sd.tex.floor.slice(1)); t.repeat.set(CELL / t.userData.tileW, CELL / t.userData.tileH);
+        const inst = new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({ map: t, roughness: 0.92 }), cells.length);
+        const d = new THREE.Object3D();
+        cells.forEach((i, k) => { d.position.set(((i % N) + 0.5) * CELL, 0.02, (((i / N) | 0) + 0.5) * CELL); d.updateMatrix(); inst.setMatrixAt(k, d.matrix); });
+        inst.receiveShadow = true; scene.add(inst);
+      });
+    }
+
     // paredes (instanciadas, agrupadas por altura)
     const wt = TEX[def.tex.wall[0]](...def.tex.wall.slice(1));
     const groups = new Map();
@@ -366,18 +380,21 @@ export class Game {
       const x = i % N, z = (i / N) | 0;
       const solid = (a, b) => a < 0 || b < 0 || a >= N || b >= N || map.grid[b * N + a] === 1;
       if (solid(x + 1, z) && solid(x - 1, z) && solid(x, z + 1) && solid(x, z - 1)) continue;
-      const key = Math.round(map.hgt[i] * 10);
+      const key = Math.round(map.hgt[i] * 10) + (map.texs && map.texs[i] >= 0 ? ':' + map.texs[i] : '');
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(i);
     }
     const dummy = new THREE.Object3D(), col = new THREE.Color();
+    const wtCache = new Map();
     for (const [key, list] of groups) {
-      const h = key / 10;
-      const t = wt.clone(); t.needsUpdate = true;
-      t.repeat.set(CELL / wt.userData.tileW, def.indoor ? 1 : h / wt.userData.tileH);
+      const [hs, ts] = String(key).split(':'), h = +hs / 10;
+      let wt0 = wt, indoor0 = def.indoor;
+      if (ts !== undefined) { const sd = map.srcDefs[+ts]; wt0 = wtCache.get(ts) || TEX[sd.tex.wall[0]](...sd.tex.wall.slice(1)); wtCache.set(ts, wt0); indoor0 = sd.indoor; }
+      const t = wt0.clone(); t.needsUpdate = true;
+      t.repeat.set(CELL / wt0.userData.tileW, indoor0 ? 1 : h / wt0.userData.tileH);
       const m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
-      if (wt.userData.emissive) {
-        const e = wt.userData.emissive.clone(); e.needsUpdate = true; e.repeat.copy(t.repeat);
+      if (wt0.userData.emissive) {
+        const e = wt0.userData.emissive.clone(); e.needsUpdate = true; e.repeat.copy(t.repeat);
         m.emissiveMap = e; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 1.3;
       }
       const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL, h, CELL), m, list.length);
