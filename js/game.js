@@ -278,9 +278,10 @@ export class Game {
     $('fpsBox').classList.toggle('hidden', !P.showFps);
     document.documentElement.style.setProperty('--cc', X.crossColor); document.documentElement.style.setProperty('--cs', (X.crossSize / 100).toFixed(2));
     this.sfx.setVolume(X.volume / 100);
-    if (this.music) { this.music.pause(); this.music = null; }
+    this.stopMusic();
     if (opts.music) { // música de fondo del jefe
       const a = this.music = new Audio(opts.music); a.loop = true; a.volume = Math.min(1, X.volume / 100 * 0.8); a.play().catch(() => {});
+      if (opts.vocal) { const v = this.music2 = new Audio(opts.vocal); v.loop = true; v.volume = 0; v.play().catch(() => {}); } // voces: suenan al acercarte al jefe
     }
     this.sens = 0.0022 * opts.sens;
     const seed = (Math.random() * 1e9) | 0;
@@ -309,7 +310,7 @@ export class Game {
 
   stop() {
     cancelAnimationFrame(this.raf);
-    if (this.music) { this.music.pause(); this.music = null; }
+    this.stopMusic();
     this.state = 'menu';
     if (this.composer) { try { this.composer.dispose(); } catch { /* nada */ } this.composer = null; }
     if (this.scene) {
@@ -1319,7 +1320,7 @@ export class Game {
 
   endRound() {
     if (this.endShown) return; this.endShown = true;
-    if (this.music) { this.music.pause(); this.music = null; }
+    this.stopMusic();
     const survivors = this.alive();
     if (this.player.alive) { this.state = 'ended'; this.sfx.win(); this.onEvent('win', { survivors, total: this.cpus.length + 1, time: this.time }); }
     else { this.state = 'ended'; this.onEvent('end', { survivors, total: this.cpus.length + 1 }); }
@@ -1437,6 +1438,11 @@ export class Game {
   updateHud() {
     const bb = $('bossBar'); let bo = null, bd = 1e9; // barra del jefe activo más cercano
     for (const b of this.bots) if (b.boss && b.active && b.hp > 0) { const d = Math.hypot(b.x - this.player.x, b.z - this.player.z); if (d < bd) { bd = d; bo = b; } }
+    if (this.music2) { // las voces suben de volumen al acercarte al jefe (≈4 m: a tope · 26 m: nada)
+      const vol = Math.min(1, this.extra.volume / 100 * 0.9), t = bo ? Math.max(0, Math.min(1, 1 - (bd - 4) / 22)) : 0;
+      this.music2.volume = vol * t * t * (3 - 2 * t);
+      if (this.music && Math.abs(this.music2.currentTime - this.music.currentTime) > 0.2) { try { this.music2.currentTime = this.music.currentTime; } catch { /* nada */ } }
+    }
     if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name;
       { const dx = bo.x - this.player.x, dz = bo.z - this.player.z, fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), rel = Math.atan2(fx * dz - fz * dx, fx * dx + fz * dz); $('bossArrow').style.transform = `rotate(${rel}rad)`; $('bossDist').textContent = Math.round(Math.hypot(dx, dz)) + ' m'; } $('bossIco').textContent = bossIco(bo); }
     else bb.classList.add('hidden');
@@ -1513,15 +1519,19 @@ export class Game {
     x.beginPath(); x.moveTo(6, 0); x.lineTo(-4, 4); x.lineTo(-4, -4); x.closePath(); x.fill(); x.restore();
   }
 
+  stopMusic() {
+    for (const k of ['music', 'music2']) if (this[k]) { this[k].pause(); this[k] = null; }
+  }
+
   pause() {
     if (this.state === 'playing' || this.state === 'dead') {
-      this.prevState = this.state; this.state = 'paused'; this.sfx.suspend(); if (this.music) this.music.pause();
+      this.prevState = this.state; this.state = 'paused'; this.sfx.suspend(); if (this.music) this.music.pause(); if (this.music2) this.music2.pause();
       for (const m of this.memes ? this.memes.values() : []) if (m.video) m.video.pause();
     }
   }
   unpause() {
     if (this.state === 'paused') {
-      this.state = this.prevState || 'playing'; this.sfx.resume(); this.last = performance.now(); if (this.music) this.music.play().catch(() => {});
+      this.state = this.prevState || 'playing'; this.sfx.resume(); this.last = performance.now(); if (this.music) this.music.play().catch(() => {}); if (this.music2) this.music2.play().catch(() => {});
       for (const m of this.memes ? this.memes.values() : []) if (m.video) m.video.play().catch(() => {});
     }
   }
