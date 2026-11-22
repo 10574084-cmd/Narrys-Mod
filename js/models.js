@@ -14,16 +14,17 @@ function fabricBump() {
   const c = document.createElement('canvas'); c.width = c.height = 64;
   const x = c.getContext('2d');
   for (let i = 0; i < 64; i += 2) for (let j = 0; j < 64; j += 2) { const v = 110 + Math.random() * 80; x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(i, j, 2, 2); }
-  fabric = new THREE.CanvasTexture(c); fabric.wrapS = fabric.wrapT = THREE.RepeatWrapping; fabric.repeat.set(3, 3);
+  fabric = new THREE.CanvasTexture(c); fabric.userData.keep = true; fabric.wrapS = fabric.wrapT = THREE.RepeatWrapping; fabric.repeat.set(3, 3);
   return fabric;
 }
 
 const cache = new Map();
 function mat(color, rough = 0.8, bump = false) {
   const k = color + '_' + rough + '_' + bump;
-  if (!cache.has(k)) cache.set(k, new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.02, bumpMap: bump ? fabricBump() : null, bumpScale: 0.6 }));
+  if (!cache.has(k)) { const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.02, bumpMap: bump ? fabricBump() : null, bumpScale: 0.6 }); m.userData.keep = true; cache.set(k, m); }
   return cache.get(k);
 }
+
 
 const GEO = {
   torso: new THREE.CapsuleGeometry(0.16, 0.3, 4, 12),
@@ -38,6 +39,8 @@ const GEO = {
   shin: new THREE.CapsuleGeometry(0.055, 0.34, 4, 8),
   shoe: new THREE.BoxGeometry(0.11, 0.07, 0.26),
 };
+
+for (const g of Object.values(GEO)) g.userData.keep = true; // recursos compartidos: no se liberan al cerrar una partida
 
 function mesh(geo, material, x = 0, y = 0, z = 0, castShadow = true) {
   const m = new THREE.Mesh(geo, material);

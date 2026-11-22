@@ -308,9 +308,9 @@ export class Game {
     if (this.composer) { try { this.composer.dispose(); } catch { /* nada */ } this.composer = null; }
     if (this.scene) {
       this.scene.traverse(o => {
-        if (o.geometry) o.geometry.dispose();
+        if (o.geometry && !o.geometry.userData.keep) o.geometry.dispose();
         const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-        for (const m of ms) { for (const k of ['map', 'emissiveMap', 'bumpMap']) if (m[k]) m[k].dispose(); m.dispose(); }
+        for (const m of ms) { if (m.userData.keep) continue; for (const k of ['map', 'emissiveMap', 'bumpMap']) if (m[k] && !m[k].userData.keep) m[k].dispose(); m.dispose(); }
       });
       if (this.scene.environment) this.scene.environment.dispose();
     }
@@ -458,6 +458,8 @@ export class Game {
     flash.shadow.mapSize.set(q.shSize / 2, q.shSize / 2); flash.shadow.bias = -0.0005; flash.shadow.camera.near = 0.3; flash.shadow.camera.far = 50;
     flash.target.position.set(0, 0, -6);
     this.camera.add(flash, flash.target);
+    this.fxLights = []; // luces de explosión reutilizables (siempre en la escena para no cambiar el nº de luces)
+    for (let i = 0; i < 3; i++) { const L = new THREE.PointLight(0xff9040, 0, 40, 2); L.position.set(0, -50, 0); scene.add(L); this.fxLights.push(L); }
     this.muzzle = new THREE.PointLight(0xffb060, 0, 14, 2); this.muzzle.position.set(0.2, -0.1, -0.7); this.camera.add(this.muzzle);
   }
 
@@ -792,8 +794,9 @@ export class Game {
   explode(x, y, z, def, by = null) {
     const mat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     const s = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), mat); s.position.set(x, y, z);
-    const L = new THREE.PointLight(0xff9040, 200, 40, 2); L.position.set(x, y + 0.5, z);
-    this.scene.add(s, L); this.fx.push({ s, L, t: 0 });
+    const L = (this.fxLights || []).find(l => !l.userData.busy);
+    if (L) { L.userData.busy = true; L.position.set(x, y + 0.5, z); L.intensity = 200; }
+    this.scene.add(s); this.fx.push({ s, L, t: 0 });
     this.sfx.burst(1.3, 110, by ? Math.max(0.08, 1 - Math.hypot(x - this.player.x, z - this.player.z) / 60) : 1.0, 0.6, 'lowpass');
     let hit = 0;
     for (const b of this.bots) {
@@ -851,8 +854,8 @@ export class Game {
     for (let i = this.fx.length - 1; i >= 0; i--) {
       const f = this.fx[i]; f.t += dt;
       const k = f.t / 0.5;
-      f.s.scale.setScalar(0.5 + k * 8); f.s.material.opacity = Math.max(0, 0.9 * (1 - k)); f.L.intensity = Math.max(0, 200 * (1 - k));
-      if (k >= 1) { this.scene.remove(f.s, f.L); f.s.geometry.dispose(); f.s.material.dispose(); this.fx.splice(i, 1); }
+      f.s.scale.setScalar(0.5 + k * 8); f.s.material.opacity = Math.max(0, 0.9 * (1 - k)); if (f.L) f.L.intensity = Math.max(0, 200 * (1 - k));
+      if (k >= 1) { this.scene.remove(f.s); if (f.L) { f.L.userData.busy = false; f.L.intensity = 0; f.L.position.y = -50; } f.s.geometry.dispose(); f.s.material.dispose(); this.fx.splice(i, 1); }
     }
   }
 
