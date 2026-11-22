@@ -574,6 +574,14 @@ export const GREEN_DEF = {
   lamp: { color: 0xff6050, int: 0, dist: 20 }, moon: 0xff8a70, sunInt: 1.5, flicker: 0, drone: 38, gen: genGreenHill,
 };
 
+export const VERITY_DEF = {
+  id: 'verityhouse', name: 'Casa de Verity', icon: '🏠', desc: 'Una casa acogedora con muchas habitaciones… y alguien que siempre sonríe. ¡Desbloqueada!',
+  indoor: true, wallH: 3.0, ceilH: 3.0, sky: 0x120c08, fog: [0x1a120c, 0.035], hemi: [0xffe6c0, 0x4a3828, 1.25],
+  tex: { wall: ['wallpaper', '#d9c7a0', '#c9b58a'], floor: ['wood', '#8a5a34'], ceil: ['ceiling', '#e8dcc4'] },
+  cols: [0x8a5a34, 0xb08a5a, 0x5a7a9a, 0x9a4a4a, 0x6a8a5a],
+  lamp: { color: 0xffe2a8, int: 38, dist: 18, panel: 0xfff0c8 }, flicker: 0.1, drone: 30, gen: genMansion,
+};
+
 /* ---------------------------- ZONA DE CONSTRUCCIÓN ---------------------------- */
 function genConstruction(def, rng) {
   const c = ctxNew(def, rng); border(c, 4); const rooms = [];

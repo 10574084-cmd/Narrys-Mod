@@ -82,3 +82,6 @@ Cuando derrotas a un jefe secreto aparece un atajo en la esquina superior izquie
 
 ## Música de los jefes
 Durante el boss fight suena una canción de fondo (en bucle, con el volumen de Opciones): «Odio el chocolate (Chase theme)» contra ODIO EL CHOCOLATE y «EXE FUNK» contra SONIC.EXE y sus amigos (`assets/music/`). Se pausa con el juego y se corta al terminar la ronda.
+
+## Código secreto: Verity
+Escribe `Verity` en «Códigos secretos»: boss fight contra **VERITY** (10 000 de vida) en la **Casa de Verity**, una casa de varias habitaciones con suelo de madera, con 100 CPUs armados de ayuda y su canción de fondo (`assets/music/verity.mp3`). Al derrotarla desbloqueas el mapa y a Verity como nextbot, y aparece su atajo en el menú.

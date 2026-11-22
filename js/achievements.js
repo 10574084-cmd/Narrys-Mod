@@ -55,6 +55,8 @@ export const ACH = [
   { id: 'troll', icon: '🤡', name: 'Caíste', desc: 'Pulsa el botón troll de la pantalla de derrota.', secret: true },
   { id: 'code_exe', icon: '💻', name: 'Código .EXE', desc: 'Descubre el segundo código secreto.', secret: true },
   { id: 'boss_exe', icon: '🦔', name: 'Fin de la colina', desc: 'Derrota a SONIC.EXE y sus amigos.', secret: true },
+  { id: 'code_verity', icon: '🏠', name: 'Visita a casa', desc: 'Descubre el tercer código secreto.', secret: true },
+  { id: 'boss_verity', icon: '🙂', name: 'La sonrisa se apagó', desc: 'Derrota a VERITY en su casa.', secret: true },
   { id: 'master', icon: '🔓', name: 'Maestro de los secretos', desc: 'Desbloquea a todos los jefes secretos.', secret: true },
   { id: 'platinum', icon: '💎', name: 'Platino', desc: 'Consigue todos los demás logros.', secret: true },
 ];
@@ -68,7 +70,7 @@ export function unlock(id) {
   const a = BY[id]; if (!a || done[id]) return false;
   done[id] = Date.now(); store(AKEY, done); notify(a);
   if (id !== 'master' && id !== 'platinum') {
-    if (done.boss_choco && done.boss_exe) unlock('master');
+    if (done.boss_choco && done.boss_exe && done.boss_verity) unlock('master');
     if (ACH.every(x => x.id === 'platinum' || done[x.id])) unlock('platinum');
   }
   return true;

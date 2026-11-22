@@ -33,7 +33,8 @@ function haloTexture() {
 
 const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
 const CPU_LOOT_DELAY = 10;
-const BOSS_HP = 14000, EXE_HP = 5000;
+const BOSS_HP = 14000, EXE_HP = 5000, VERITY_HP = 10000, VERITY_SIZE = 5;
+const bossIco = b => { const id = String(b && b.meme && b.meme.id); return id.startsWith('secret-exe-') ? '💀' : id === 'secret-verity' ? '🙂' : '🍫'; };
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, smg: 1.5, shotgun: 2, sniper: 2.5, grenade: 2.8, bazooka: 3 };
 const WEAPONS = {
@@ -600,6 +601,7 @@ export class Game {
     for (const b of this.bots) if (b.meme && b.meme.id === 'secret-choco') this.makeBoss(b, cc.size, cc.hp);
     // Sonic.exe y sus amigos: jefes con 5000 de vida y el tamaño de un nextbot normal
     for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
+    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP); // Verity
     this.bossBot = this.bots.find(b => b.boss) || null;
     if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3; });
     if (o.boss) { // CPUs armados
@@ -1259,7 +1261,7 @@ export class Game {
     this.explode(b.x, b.bh / 2, b.z, { blast: 0, stun: 0, dmg: 0 });
     const m = b.meme; if (m && m.video && !this.bots.some(o => o !== b && o.active && o.meme === m)) m.video.pause();
     this.sfx.win();
-    const ico = String(b.meme && b.meme.id).startsWith('secret-exe-') ? '💀' : '🍫';
+    const ico = bossIco(b);
     this.feed(`${ico} ¡${b.name} fue derrotado!`, true); this.toast(`${ico} ¡JEFE DERROTADO!`, 3500);
     if (this.opts.boss && this.bots.every(x => !x.boss || x.dead)) { this.bossDead = true; this.sfx.setThreat(0); setTimeout(() => this.endRound(), 1800); } // en el boss fight termina la ronda
   }
@@ -1434,7 +1436,7 @@ export class Game {
   updateHud() {
     const bb = $('bossBar'); let bo = null, bd = 1e9; // barra del jefe activo más cercano
     for (const b of this.bots) if (b.boss && b.active && b.hp > 0) { const d = Math.hypot(b.x - this.player.x, b.z - this.player.z); if (d < bd) { bd = d; bo = b; } }
-    if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name; $('bossIco').textContent = String(bo.meme && bo.meme.id).startsWith('secret-exe-') ? '💀' : '🍫'; }
+    if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name; $('bossIco').textContent = bossIco(bo); }
     else bb.classList.add('hidden');
     $('hudTime').textContent = fmt(Math.max(0, this.round - this.time));
     $('hudAlive').textContent = `👥 ${this.alive()} / ${this.cpus.length + 1}`;

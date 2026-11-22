@@ -1,5 +1,5 @@
 // Menú principal, ajustes y conexión con el juego
-import { MAP_DEFS, CHOCO_DEF, GREEN_DEF, generateMap, N, setMapSize } from './maps.js';
+import { MAP_DEFS, CHOCO_DEF, GREEN_DEF, VERITY_DEF, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
@@ -26,6 +26,7 @@ const saveUnl = () => { try { localStorage.setItem(UKEY, JSON.stringify(unlocks)
 let chocoCache = null;
 if (unlocks.choco && !MAP_DEFS.includes(CHOCO_DEF)) MAP_DEFS.push(CHOCO_DEF); // mapa del jefe desbloqueado
 if (unlocks.exe && !MAP_DEFS.includes(GREEN_DEF)) MAP_DEFS.push(GREEN_DEF); // mapa de Sonic.exe desbloqueado
+if (unlocks.verity && !MAP_DEFS.includes(VERITY_DEF)) MAP_DEFS.push(VERITY_DEF); // casa de Verity desbloqueada
 if (cfg.map >= MAP_DEFS.length) cfg.map = 0;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* nada */ } };
 
@@ -179,9 +180,15 @@ async function getExeEntries() {
   if (!exeCache) exeCache = await Promise.all(EXE_BOSSES.map(async ([id, name, f, aspect]) => ({ id, name, kind: 'image', blob: await (await fetch(`assets/exe/${f}.png`)).blob(), thumb: `assets/exe/${f}.png`, aspect, builtin: true })));
   return exeCache;
 }
+let verityCache = null;
+async function getVerityEntry() {
+  if (!verityCache) verityCache = { id: 'secret-verity', name: 'VERITY', kind: 'image', blob: await (await fetch('assets/verity/verity.png')).blob(), thumb: 'assets/verity/verity.png', aspect: 1, builtin: true };
+  return verityCache;
+}
 async function fullPool() { // memes normales + los jefes desbloqueados
   const pool = await buildMemePool();
   if (unlocks.choco) { try { pool.push(await getChocoEntry()); } catch (e) { console.warn('Jefe no disponible', e); } }
+  if (unlocks.verity) { try { pool.push(await getVerityEntry()); } catch (e) { console.warn('Verity no disponible', e); } }
   if (unlocks.exe) { try { pool.push(...await getExeEntries()); } catch (e) { console.warn('Jefes .EXE no disponibles', e); } }
   return pool;
 }
@@ -302,9 +309,18 @@ function unlockExe() {
   renderMemes(); renderBossKeys();
   return true;
 }
+function unlockVerity() {
+  if (unlocks.verity) return false;
+  unlocks.verity = true; saveUnl();
+  if (!MAP_DEFS.includes(VERITY_DEF)) { MAP_DEFS.push(VERITY_DEF); addMapCard(VERITY_DEF, MAP_DEFS.length - 1); addMapChip(VERITY_DEF, MAP_DEFS.length - 1); }
+  renderMemes(); renderBossKeys();
+  return true;
+}
+const bossName = () => lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : lastBoss === 'verity' ? 'VERITY' : 'ODIO EL CHOCOLATE';
 function bossReward() {
   if (!game.bossDead) return unlockMsg('');
-  A.unlock(lastBoss === 'exe' ? 'boss_exe' : 'boss_choco');
+  A.unlock(lastBoss === 'exe' ? 'boss_exe' : lastBoss === 'verity' ? 'boss_verity' : 'boss_choco');
+  if (lastBoss === 'verity') return unlockMsg(unlockVerity() ? '🔓 ¡Desbloqueaste a VERITY como nextbot y el mapa Casa de Verity! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados a Verity y su casa.');
   if (lastBoss === 'exe') return unlockMsg(unlockExe() ? '🔓 ¡Desbloqueaste a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE como nextbots y el mapa Green Hills .EXE! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados los nextbots y el mapa de Sonic.exe.');
   unlockMsg(unlockChoco() ? '🔓 ¡Desbloqueaste el nextbot ODIO EL CHOCOLATE y el mapa Backrooms Planos! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados el nextbot y el mapa del jefe.');
 }
@@ -318,7 +334,8 @@ game.onEvent = (type, d) => {
     unlockMsg(''); $('over').classList.remove('win'); $('overTitle').textContent = '¡TE ATRAPARON!';
     $('overText').textContent = `${d.by} te encontró. Sobreviviste ${Math.floor(d.time)} s y quedaste en el puesto ${d.place} de ${d.total}.`;
     $('spectHint').textContent = 'Mirando a los CPU · Espacio / clic para cambiar de jugador';
-    show('choco', game.state === 'dead' && !game.chocoUsed && !!unlocks.choco); // solo si ya derrotaste al jefe show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco');
+    show('choco', game.state === 'dead' && !game.chocoUsed && !!unlocks.choco); // solo si ya derrotaste al jefe
+    show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco');
     show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'win') {
     if (!(game.opts && game.opts.boss)) {
@@ -327,12 +344,12 @@ game.onEvent = (type, d) => {
       if (cfg.dur >= 600) A.unlock('win_long'); if (cfg.size >= 80) A.unlock('win_huge');
     }
     bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead); $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
-    $('overText').textContent = game.bossDead ? `¡Derrotaste a ${lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : 'ODIO EL CHOCOLATE'} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
+    $('overText').textContent = game.bossDead ? `¡Derrotaste a ${bossName()} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
   } else if (type === 'end') {
     bossReward(); show('loseLink', !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead);
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
-    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : 'ODIO EL CHOCOLATE'}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
+    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${bossName()}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
     $('spectHint').textContent = ''; show('over', true);
   }
 };
@@ -371,14 +388,14 @@ async function chocoThumb(blob) {
 async function playBoss(kind = 'choco') {
   stopIntro();
   lastBoss = kind;
-  const exe = kind === 'exe', def = exe ? GREEN_DEF : CHOCO_DEF;
+  const exe = kind === 'exe', ver = kind === 'verity', def = exe ? GREEN_DEF : ver ? VERITY_DEF : CHOCO_DEF;
   show('loading', true); $('loadText').textContent = exe ? 'Corrompiendo la colina…' : 'Invocando al jefe…';
   game.sfx.init(def.drone);
   await new Promise(r => setTimeout(r, 30));
   try {
-    const plan = exe ? await getExeEntries() : [await getChocoEntry()];
+    const plan = exe ? await getExeEntries() : ver ? [await getVerityEntry()] : [await getChocoEntry()];
     $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
-    await game.start({ boss: true, bossKey: kind, music: exe ? 'assets/music/exe-funk.mp3' : 'assets/music/choco-chase.mp3', bossMsg: exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : undefined,
+    await game.start({ boss: true, bossKey: kind, music: exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity.mp3' : 'assets/music/choco-chase.mp3', bossMsg: exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 100 CPUs' : undefined,
       perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: 9, hp: 14000 }, def, map: 0, cpus: 100, bots: plan.length, plan, diff: 1, size: 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {
@@ -395,6 +412,7 @@ function tryCode() {
   const raw = $('codeIn').value, code = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
   const msg = $('codeMsg');
   if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; A.unlock('code_choco'); playBoss('choco'); }
+  else if (code === 'verity') { msg.textContent = '🙂 ¡Código correcto! Entrando a la casa de Verity…'; $('codeIn').value = ''; A.unlock('code_verity'); playBoss('verity'); }
   else if (code === 'sonic1exe') { msg.textContent = '💀 ¡Código correcto! Corrompiendo Green Hills…'; $('codeIn').value = ''; A.unlock('code_exe'); playBoss('exe'); }
   else if (!code) msg.textContent = '';
   else msg.textContent = '❌ Código incorrecto';
@@ -463,7 +481,7 @@ $('btnFactory').onclick = async () => {
 /* ---------- atajos a los jefes derrotados (esquina superior izquierda) ---------- */
 function renderBossKeys() {
   const box = $('bossKeys'); box.innerHTML = '';
-  const list = [['choco', '🍫', 'ODIO EL CHOCOLATE', 'Backrooms Planos'], ['exe', '💀', 'SONIC.EXE y amigos', 'Green Hills .EXE']];
+  const list = [['choco', '🍫', 'ODIO EL CHOCOLATE', 'Backrooms Planos'], ['exe', '💀', 'SONIC.EXE y amigos', 'Green Hills .EXE'], ['verity', '🙂', 'VERITY', 'Casa de Verity']];
   for (const [k, ico, name, map] of list) {
     if (!unlocks[k]) continue;
     const b = document.createElement('button'); b.type = 'button'; b.title = `Pelear otra vez contra ${name} (${map})`;
