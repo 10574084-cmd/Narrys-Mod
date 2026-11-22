@@ -618,15 +618,15 @@ export class Game {
     const cc = o.choco || { size: 9, hp: BOSS_HP };
     for (const b of this.bots) if (b.meme && b.meme.id === 'secret-choco') this.makeBoss(b, cc.size, cc.hp);
     // Sonic.exe y sus amigos: jefes con 5000 de vida y el tamaño de un nextbot normal
-    for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
-    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP); // Verity
+    for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP * (o.hpMul || 1)); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
+    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP * (o.hpMul || 1)); // Verity
     this.bossBot = this.bots.find(b => b.boss) || null;
     if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3; });
     if (o.intro) this.setupIntro();
     if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
         const type = o.allBazooka ? 'bazooka' : i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
-        c.gun = { type, ammo: WEAPONS[type].ammo * 2, cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
+        c.gun = { type, ammo: WEAPONS[type].ammo * (o.allBazooka ? 6 : 2), cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
       });
     }
   }
