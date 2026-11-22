@@ -269,3 +269,5 @@ body.touch .slot { width: 54px; height: 48px; } body.touch #hotbar { gap: 4px; }
 #bossKeys button i { font-style: normal; letter-spacing: .04em; }
 #bossKeys button:hover { background: rgba(255,42,61,.3); }
 @media (max-width: 640px) { #bossKeys button i { display: none; } }
+#bossDir { margin-top: 6px; display: inline-flex; align-items: center; gap: 8px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,210,77,.6); border-radius: 999px; padding: 2px 12px; font-weight: 800; font-size: 14px; color: #ffd24d; }
+#bossArrow { display: inline-block; font-size: 18px; line-height: 1; transition: transform .08s linear; }

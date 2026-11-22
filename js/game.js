@@ -33,7 +33,7 @@ function haloTexture() {
 
 const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
 const CPU_LOOT_DELAY = 10;
-const BOSS_HP = 14000, EXE_HP = 5000, VERITY_HP = 10000, VERITY_SIZE = 5;
+const BOSS_HP = 14000, EXE_HP = 5000, VERITY_HP = 10000, VERITY_SIZE = 3.2;
 const bossIco = b => { const id = String(b && b.meme && b.meme.id); return id.startsWith('secret-exe-') ? '💀' : id === 'secret-verity' ? '🙂' : '🍫'; };
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, smg: 1.5, shotgun: 2, sniper: 2.5, grenade: 2.8, bazooka: 3 };
@@ -872,8 +872,9 @@ export class Game {
     let best = null, bd = -1;
     for (let k = 0; k < 30; k++) {
       const c = W.cellWorld(free[Math.floor(Math.random() * free.length)]);
-      const d = Math.hypot(c.x - ref.x, c.z - ref.z);
-      if (d > bd) { bd = d; best = c; }
+      let d = Math.hypot(c.x - ref.x, c.z - ref.z);
+      if (this.opts.boss) d = -Math.abs(d - 22); // en los boss fights aparece cerca (~22 m) para que sea fácil encontrarlo
+      if (!best || d > bd) { bd = d; best = c; }
     }
     b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.active = true; b.mesh.visible = true; b.halo.visible = true;
     b.state = 'patrol'; b.goalX = null; b.stateT = 0;
@@ -1436,7 +1437,8 @@ export class Game {
   updateHud() {
     const bb = $('bossBar'); let bo = null, bd = 1e9; // barra del jefe activo más cercano
     for (const b of this.bots) if (b.boss && b.active && b.hp > 0) { const d = Math.hypot(b.x - this.player.x, b.z - this.player.z); if (d < bd) { bd = d; bo = b; } }
-    if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name; $('bossIco').textContent = bossIco(bo); }
+    if (bo) { bb.classList.remove('hidden'); $('bossFill').style.width = (bo.hp / bo.hpMax * 100).toFixed(1) + '%'; $('bossHp').textContent = `${Math.ceil(bo.hp).toLocaleString('es')} / ${bo.hpMax.toLocaleString('es')}`; $('bossNm').textContent = bo.name;
+      { const dx = bo.x - this.player.x, dz = bo.z - this.player.z, fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), rel = Math.atan2(fx * dz - fz * dx, fx * dx + fz * dz); $('bossArrow').style.transform = `rotate(${rel}rad)`; $('bossDist').textContent = Math.round(Math.hypot(dx, dz)) + ' m'; } $('bossIco').textContent = bossIco(bo); }
     else bb.classList.add('hidden');
     $('hudTime').textContent = fmt(Math.max(0, this.round - this.time));
     $('hudAlive').textContent = `👥 ${this.alive()} / ${this.cpus.length + 1}`;
@@ -1496,7 +1498,8 @@ export class Game {
     const x = this.miniCtx, k = 150 / (N * CELL), p = this.player;
     x.clearRect(0, 0, 150, 150); x.drawImage(this.miniBase, 0, 0);
     for (const b of this.bots) {
-      if (!b.active || Math.hypot(b.x - p.x, b.z - p.z) > 30) continue;
+      if (b.active && b.boss && b.hp > 0) { x.strokeStyle = '#ffd24d'; x.lineWidth = 2; x.beginPath(); x.arc(b.x * k, b.z * k, 6, 0, 6.3); x.stroke(); } // los jefes siempre se ven en el minimapa
+      if (!b.active || (!b.boss && Math.hypot(b.x - p.x, b.z - p.z) > 30)) continue;
       x.fillStyle = b.state === 'chase' ? '#ff2a3d' : '#a8602a'; x.beginPath(); x.arc(b.x * k, b.z * k, 3, 0, 6.3); x.fill();
     }
     for (const c of this.cpus) if (!c.alive && Math.hypot(c.x - p.x, c.z - p.z) < 45) { x.fillStyle = '#3ddc84'; x.fillRect(c.x * k - 2, c.z * k - 2, 4, 4); }

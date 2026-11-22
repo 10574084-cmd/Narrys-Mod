@@ -85,3 +85,6 @@ Durante el boss fight suena una canción de fondo (en bucle, con el volumen de O
 
 ## Código secreto: Verity
 Escribe `Verity` en «Códigos secretos»: boss fight contra **VERITY** (10 000 de vida) en la **Casa de Verity**, una casa de varias habitaciones con suelo de madera, con 100 CPUs armados de ayuda y su canción de fondo (`assets/music/verity.mp3`). Al derrotarla desbloqueas el mapa y a Verity como nextbot, y aparece su atajo en el menú.
+
+## Encontrar al jefe
+En los boss fights el jefe aparece a ~22 m de ti, se ve siempre en el minimapa (círculo dorado) y bajo su barra de vida hay una flecha ▲ que apunta hacia él con la distancia. Verity es más pequeña (3,2 m) y su casa usa el mapa de tamaño Normal.
