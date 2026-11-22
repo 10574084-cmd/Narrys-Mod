@@ -409,7 +409,7 @@ async function playBoss(kind = 'choco', inRush = false) {
     const plan = fin ? [await getChocoEntry(), ...(await getExeEntries()), await getVerityEntry()] : exe ? await getExeEntries() : ver ? [await getVerityEntry()] : [await getChocoEntry()];
     $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
     await game.start({ boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 100 CPUs' : undefined,
-      perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: fin ? 7 : 9, hp: 14000 }, def, map: 0, cpus: fin ? 150 : 100, bots: plan.length, plan, diff: 1, size: fin ? 80 : ver ? 36 : 64, dur: 600,
+      perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: fin ? 7 : 9, hp: 14000 }, def, map: 0, cpus: fin ? 150 : 100, intro: fin, allBazooka: fin, bots: plan.length, plan, diff: 1, size: fin ? 80 : ver ? 36 : 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {
     console.error(err); show('loading', false);

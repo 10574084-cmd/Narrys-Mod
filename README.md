@@ -94,3 +94,4 @@ Si pierdes el boss fight del chocolate, en vez de los botones normales la pantal
 
 ## ??? (jefe final)
 Al derrotar a los tres jefes (Odio el chocolate, Sonic.exe y amigos, Verity) aparece el botón **???** en el menú principal. Te hace derrotarlos otra vez seguidos y, al final, aparecen **todos los jefes a la vez** en la **Zona Glitch** (mezcla de todos los mapas, plana y sin techo) con **150 CPUs** y la canción `assets/music/final-zone.mp3`. Da el logro secreto «???».
+El jefe final empieza con una intro: miras a los jefes «solo», llegan los 150 CPUs corriendo con bazucas, uno te regala una bazuca y empieza la batalla (todos con bazuca).

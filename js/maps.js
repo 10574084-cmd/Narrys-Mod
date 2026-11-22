@@ -801,6 +801,10 @@ function genGlitch(def, rng) {
   // cualquier "objeto" sin prop real vuelve a ser suelo (por si un prop cayó en otro bloque)
   const has = new Set(c.props.map(p => I(Math.floor(p.x / CELL), Math.floor(p.z / CELL))));
   for (let i = 0; i < N * N; i++) if (c.g[i] === 2 && !has.has(i)) c.g[i] = 0;
+  // plaza central abierta + pasillo largo hacia atrás (escenario de la intro del jefe final)
+  { const m = N >> 1, carve = (x, z) => (Math.abs(x - m) <= 10 && Math.abs(z - m) <= 10) || (Math.abs(x - m) <= 6 && z >= 6 && z <= m - 10);
+    for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) if (carve(x, z)) { c.g[I(x, z)] = 0; c.hx[I(x, z)] = 0; c.hz[I(x, z)] = 0; }
+    c.props = c.props.filter(p => !carve(Math.floor(p.x / CELL), Math.floor(p.z / CELL))); }
   // pasillos abiertos para que todo conecte
   for (let k = 8; k < N - 4; k += 16) {
     for (let t = 1; t < N - 1; t++) for (const [x, z] of [[t, k], [k, t]]) {

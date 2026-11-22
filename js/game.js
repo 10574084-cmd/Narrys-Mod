@@ -295,7 +295,7 @@ export class Game {
     this.buildScene();
     await this.setupPost();
     await this.buildMemes(opts.plan);
-    this.spawnEntities();
+    this.intro = null; this.spawnEntities();
     this.buildMini();
     this.sfx.init(def.drone);
     this.chocoUsed = false; this.bossDead = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
@@ -303,7 +303,7 @@ export class Game {
     this.state = 'playing';
     this.resize();
     $('vignette').style.opacity = 0;
-    this.toast(opts.boss ? (opts.bossMsg || '🍫 ¡BOSS FIGHT! Derrota a ODIO EL CHOCOLATE con tus 100 CPUs') : '¡CORRE! Los nextbots llegan pronto…', 3500);
+    if (!opts.intro) this.toast(opts.boss ? (opts.bossMsg || '🍫 ¡BOSS FIGHT! Derrota a ODIO EL CHOCOLATE con tus 100 CPUs') : '¡CORRE! Los nextbots llegan pronto…', 3500);
     this.last = performance.now();
     this.raf = requestAnimationFrame(t => this.loop(t));
   }
@@ -622,12 +622,71 @@ export class Game {
     for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP); // Verity
     this.bossBot = this.bots.find(b => b.boss) || null;
     if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3; });
+    if (o.intro) this.setupIntro();
     if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
-        const type = i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
+        const type = o.allBazooka ? 'bazooka' : i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
         c.gun = { type, ammo: WEAPONS[type].ammo * 2, cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
       });
     }
+  }
+
+  // intro del jefe final: el jugador mira a los jefes "solo"; llegan los CPUs con bazucas y le regalan una
+  setupIntro() {
+    const P = this.player, m = N >> 1, C = m * CELL + CELL / 2;
+    P.x = C; P.z = (m - 8) * CELL + CELL / 2; this.yaw = Math.PI; this.pitch = 0.04;
+    const spots = [[-6, 20], [0, 18], [6, 20], [-11, 30], [11, 26]]; // x relativo, metros por delante
+    const ex = this.bots.filter(b => String(b.meme.id).startsWith('secret-exe-')), others = this.bots.filter(b => !String(b.meme.id).startsWith('secret-exe-'));
+    const order = [...ex, ...others];
+    order.forEach((b, i) => {
+      const [dx, dz] = spots[i % spots.length];
+      b.x = C + dx; b.z = P.z + dz; b.lx = b.x; b.lz = b.z; b.active = true; b.mesh.visible = true; b.halo.visible = true; b.state = 'patrol'; b.stateT = 0;
+    });
+    this.cpus.forEach((c, i) => {
+      const col = i % 16, row = Math.floor(i / 16);
+      c.x = C + (col - 7.5) * 1.4; c.z = P.z - 40 - row * 1.8; c.yaw = 0; c.spd = 0; c.lx = c.x; c.lz = c.z;
+      if (i === 0) { c.x = C + 1; c.z = P.z - 30; }
+      c.slotX = C + (col - 7.5) * 1.9; c.slotZ = P.z - 2.2 - row * 2.0;
+      if (i === 0) { c.slotX = C + 2.2; c.slotZ = P.z - 0.6; }
+      c.sp = 9.5 + Math.random() * 2; c.go = 4 + Math.random() * 1.2; c.done = false;
+    });
+    this.intro = { t: 0, C, f: {} };
+  }
+
+  updateIntro(dt) {
+    const I = this.intro, P = this.player, t = I.t += dt, ease = x => x * x * (3 - 2 * x), cl = (x, a, b) => Math.min(b, Math.max(a, x));
+    this.fireReq = false; this.fireHeld = false;
+    let yaw = Math.PI;
+    if (t >= 12) yaw = Math.PI * ease(cl((t - 12) / 1.4, 0, 1));
+    else if (t >= 5) yaw = Math.PI * (1 - ease(cl((t - 5) / 1.6, 0, 1)));
+    this.yaw = yaw; this.pitch = 0.04;
+    const once = (k, fn) => { if (!I.f[k]) { I.f[k] = 1; fn(); } };
+    if (t > 0.6) once('a', () => this.toast('😰 Estás solo… contra TODOS los jefes', 4000));
+    if (t > 5.3) once('b', () => this.toast('…¿o no? 👀', 2500));
+    for (const c of this.cpus) {
+      if (!c.alive || t < c.go) { continue; }
+      const g = this.cpus[0] === c, tx = g && !I.f.gift ? P.x + 0.3 : c.slotX, tz = g && !I.f.gift ? P.z - 2.2 : c.slotZ;
+      const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
+      if (d > 0.3) {
+        const st = Math.min(d, c.sp * dt); c.x += dx / d * st; c.z += dz / d * st;
+        const ty = Math.atan2(dx, dz); let da = ty - c.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); c.yaw += da * Math.min(1, dt * 12);
+        c.spd += (c.sp - c.spd) * Math.min(1, dt * 8);
+      } else {
+        c.spd += (0 - c.spd) * Math.min(1, dt * 8);
+        const ty = g && !I.f.gift ? Math.atan2(P.x - c.x, P.z - c.z) : 0; let da = ty - c.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); c.yaw += da * Math.min(1, dt * 8);
+        if (g && !I.f.gift && t > 7) { I.f.gift = t; this.giveWeapon('bazooka', 6); this.feed(`🎁 ${c.name} le regaló una BAZUCA a ${P.name}`, true); this.toast(`🎁 ¡${c.name} te regaló una BAZUCA!`, 3000); }
+      }
+    }
+    if (I.f.gift && t > I.f.gift + 3.5) once('c', () => this.toast('🚀 ¡TODOS TIENEN BAZUCA!', 2500));
+    if (I.f.gift && t > I.f.gift + 5.5 && t > 13.4) this.endIntro();
+    this.updateVisuals(dt); this.updateHud();
+  }
+
+  endIntro() {
+    this.intro = null; this.yaw = Math.PI; this.pitch = 0;
+    for (const c of this.cpus) { c.mode = 'wander'; c.path = null; c.idle = 0; c.react = 0; c.lx = c.x; c.lz = c.z; c.spd = 0; }
+    for (const b of this.bots) { b.target = null; b.retarget = 0; }
+    this.toast(this.opts.bossMsg || '¡BOSS FIGHT!', 3500);
   }
 
   // 1 bazuca en todo el mapa + 8 armas más (5 revólveres y 3 escopetas)
@@ -935,6 +994,7 @@ export class Game {
         if (this.floorTex) this.floorTex.offset.set(Math.random(), Math.random());
       }
     }
+    if (this.intro) { this.time -= dt; this.updateIntro(dt); return; }
     if (this.player.invuln > 0) this.player.invuln -= dt;
     this.updatePlayer(dt);
     this.updateWeapons(dt);
