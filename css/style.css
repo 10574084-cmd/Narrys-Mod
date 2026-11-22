@@ -276,3 +276,4 @@ body.touch .slot { width: 54px; height: 48px; } body.touch #hotbar { gap: 4px; }
 #over.troll #retry, #over.troll #toMenu2 { display: none; }
 #over.troll #loseLink { margin-top: 14px; } #over.troll #loseLink p { font-size: 1.1rem; } #over.troll #loseLink .btn { font-size: 1.2rem; padding: 14px 28px; }
 #over.troll #choco { font-size: 1.2rem; padding: 14px 28px; }
+#over.rushnext .row, #over.rushnext #unlockMsg { display: none !important; }

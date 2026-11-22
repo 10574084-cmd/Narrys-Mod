@@ -58,6 +58,7 @@ export const ACH = [
   { id: 'code_verity', icon: '🏠', name: 'Visita a casa', desc: 'Descubre el tercer código secreto.', secret: true },
   { id: 'boss_verity', icon: '🙂', name: 'La sonrisa se apagó', desc: 'Derrota a VERITY en su casa.', secret: true },
   { id: 'master', icon: '🔓', name: 'Maestro de los secretos', desc: 'Desbloquea a todos los jefes secretos.', secret: true },
+  { id: 'rush_final', icon: '👾', name: '???', desc: 'Derrota a todos los jefes juntos en la Zona Glitch.', secret: true },
   { id: 'platinum', icon: '💎', name: 'Platino', desc: 'Consigue todos los demás logros.', secret: true },
 ];
 const BY = Object.fromEntries(ACH.map(a => [a.id, a]));

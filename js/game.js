@@ -338,7 +338,7 @@ export class Game {
     scene.background = new THREE.Color(def.sky);
     scene.fog = new THREE.FogExp2(def.fog[0], def.fog[1]);
     scene.add(this.camera);
-    scene.add(new THREE.HemisphereLight(def.hemi[0], def.hemi[1], def.hemi[2]));
+    const hemi = this.hemi = new THREE.HemisphereLight(def.hemi[0], def.hemi[1], def.hemi[2]); scene.add(hemi);
     const size = N * CELL;
     const rt = !!q.rt;
 
@@ -347,7 +347,7 @@ export class Game {
     ft.repeat.set(size / ft.userData.tileW, size / ft.userData.tileH);
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ map: ft, roughness: rt ? 0.38 : 0.92, metalness: rt ? 0.15 : 0 }));
     floor.rotation.x = -Math.PI / 2; floor.position.set(size / 2, 0, size / 2); floor.receiveShadow = true;
-    scene.add(floor);
+    scene.add(floor); this.floorTex = ft;
 
     // techo (solo interiores)
     if (def.indoor) {
@@ -909,6 +909,15 @@ export class Game {
   update(dt) {
     if (this.state === 'paused') return;
     this.time += dt;
+    if (this.def.glitch && this.scene) { // mapa final: colores y suelo parpadean
+      this.glT = (this.glT || 0) - dt;
+      if (this.glT <= 0) {
+        this.glT = 0.15 + Math.random() * 0.5;
+        const col = new THREE.Color().setHSL(Math.random(), 0.9, 0.3 + Math.random() * 0.3);
+        this.scene.background = col; this.scene.fog.color.copy(col); if (this.hemi) this.hemi.color.setHSL(Math.random(), 0.8, 0.7);
+        if (this.floorTex) this.floorTex.offset.set(Math.random(), Math.random());
+      }
+    }
     if (this.player.invuln > 0) this.player.invuln -= dt;
     this.updatePlayer(dt);
     this.updateWeapons(dt);

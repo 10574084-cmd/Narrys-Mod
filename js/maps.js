@@ -767,6 +767,57 @@ export const MAP_DEFS = [
     lamp: { color: 0xffe08a, int: 70, dist: 24 }, moon: 0xb09cff, sunInt: 0.8, flicker: 0.3, drone: 52, gen: genFair },
 ];
 
+
+/* ---------------------------- MAPA FINAL GLITCHEADO ---------------------------- */
+// Mezcla trozos de todos los mapas, todo plano (paredes bajas) y sin techo.
+function genGlitch(def, rng) {
+  const c = ctxNew(def, rng);
+  const pool = [...MAP_DEFS.filter(d => !d.glitch), GREEN_DEF, VERITY_DEF];
+  const srcs = [];
+  for (let k = 0; k < 7; k++) {
+    const d = pool[Math.floor(rng() * pool.length)];
+    try { const r = d.gen(d, rng); srcs.push({ c: r.c, d }); } catch (e) { /* se ignora */ }
+  }
+  const B = 8, FLAT = 3.2;
+  const bn = Math.ceil(N / B), pick = new Int32Array(bn * bn);
+  for (let i = 0; i < pick.length; i++) pick[i] = Math.floor(rng() * srcs.length);
+  const owner = new Int32Array(N * N);
+  for (let z = 0; z < N; z++) for (let x = 0; x < N; x++) {
+    const s = srcs[pick[Math.floor(z / B) * bn + Math.floor(x / B)]], i = I(x, z);
+    owner[i] = pick[Math.floor(z / B) * bn + Math.floor(x / B)];
+    if (!s) { c.g[i] = rng() < 0.2 ? 1 : 0; c.hgt[i] = FLAT; continue; }
+    c.g[i] = s.c.g[i]; c.hx[i] = s.c.hx[i]; c.hz[i] = s.c.hz[i]; c.hgt[i] = Math.min(FLAT, s.c.hgt[i]);
+  }
+  const blockOf = (px, pz) => { const x = Math.floor(px / CELL), z = Math.floor(pz / CELL); return inb(x, z) ? owner[I(x, z)] : -1; };
+  srcs.forEach((s, si) => {
+    for (const p of s.c.props) {
+      const x = Math.floor(p.x / CELL), z = Math.floor(p.z / CELL);
+      if (inb(x, z) && owner[I(x, z)] === si && c.g[I(x, z)] === 2) c.props.push(p);
+    }
+  });
+  // cualquier "objeto" sin prop real vuelve a ser suelo (por si un prop cayó en otro bloque)
+  const has = new Set(c.props.map(p => I(Math.floor(p.x / CELL), Math.floor(p.z / CELL))));
+  for (let i = 0; i < N * N; i++) if (c.g[i] === 2 && !has.has(i)) c.g[i] = 0;
+  // pasillos abiertos para que todo conecte
+  for (let k = 8; k < N - 4; k += 16) {
+    for (let t = 1; t < N - 1; t++) for (const [x, z] of [[t, k], [k, t]]) {
+      const i = I(x, z);
+      if (c.g[i] === 2) { const pi = c.props.findIndex(p => Math.floor(p.x / CELL) === x && Math.floor(p.z / CELL) === z); if (pi >= 0) c.props.splice(pi, 1); }
+      c.g[i] = 0;
+    }
+  }
+  border(c, FLAT);
+  const free = keepLargest(c);
+  return { c, free };
+}
+
+export const GLITCH_DEF = {
+  id: 'glitchzone', name: 'Zona Glitch', icon: '👾', desc: 'La combinación corrupta de todos los mapas.', glitch: true,
+  indoor: false, wallH: 3.2, sky: 0x2a0044, fog: [0x2a0044, 0.012], hemi: [0xffffff, 0x8040a0, 1.5],
+  tex: { wall: ['glitch'], floor: ['glitch'] },
+  lamp: { color: 0xff40ff, int: 0, dist: 20 }, moon: 0xc080ff, sunInt: 1.2, flicker: 0, drone: 40, gen: genGlitch,
+};
+
 export function generateMap(def, seed) {
   for (let attempt = 0; attempt < 8; attempt++) {
     const rng = makeRng((seed + attempt * 7919) >>> 0);

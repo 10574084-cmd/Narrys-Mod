@@ -1,5 +1,5 @@
 // Menú principal, ajustes y conexión con el juego
-import { MAP_DEFS, CHOCO_DEF, GREEN_DEF, VERITY_DEF, generateMap, N, setMapSize } from './maps.js';
+import { MAP_DEFS, CHOCO_DEF, GREEN_DEF, VERITY_DEF, GLITCH_DEF, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
@@ -316,9 +316,21 @@ function unlockVerity() {
   renderMemes(); renderBossKeys();
   return true;
 }
-const bossName = () => lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : lastBoss === 'verity' ? 'VERITY' : 'ODIO EL CHOCOLATE';
+let rushTimer = 0;
+function rushAdvance() {
+  if (!rush || !game.bossDead || lastBoss === 'final') return false;
+  const next = RUSH[RUSH.indexOf(lastBoss) + 1];
+  if (!next) return false;
+  $('over').classList.add('rushnext'); $('overTitle').textContent = '¡JEFE DERROTADO!';
+  $('overText').textContent = next === 'final' ? 'Siguiente: ¡EL BOSS FINAL con todos los jefes en la Zona Glitch!' : 'Preparando al siguiente jefe…';
+  rushTimer = setTimeout(() => { show('over', false); playBoss(next, true); }, 4500);
+  return true;
+}
+const bossName = () => lastBoss === 'final' ? 'TODOS LOS JEFES' : lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : lastBoss === 'verity' ? 'VERITY' : 'ODIO EL CHOCOLATE';
 function bossReward() {
   if (!game.bossDead) return unlockMsg('');
+  if (lastBoss === 'final') { A.unlock('rush_final'); return unlockMsg('👾 ¡Completaste ???! Derrotaste a todos los jefes en la Zona Glitch.'); }
+  if (rush) { A.unlock(lastBoss === 'exe' ? 'boss_exe' : lastBoss === 'verity' ? 'boss_verity' : 'boss_choco'); return unlockMsg(''); }
   A.unlock(lastBoss === 'exe' ? 'boss_exe' : lastBoss === 'verity' ? 'boss_verity' : 'boss_choco');
   if (lastBoss === 'verity') return unlockMsg(unlockVerity() ? '🔓 ¡Desbloqueaste a VERITY como nextbot y el mapa Casa de Verity! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados a Verity y su casa.');
   if (lastBoss === 'exe') return unlockMsg(unlockExe() ? '🔓 ¡Desbloqueaste a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE como nextbots y el mapa Green Hills .EXE! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados los nextbots y el mapa de Sonic.exe.');
@@ -346,12 +358,12 @@ game.onEvent = (type, d) => {
     }
     bossReward(); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); } $('over').classList.add('win'); $('overTitle').textContent = '¡SOBREVIVISTE!';
     $('overText').textContent = game.bossDead ? `¡Derrotaste a ${bossName()} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.`;
-    $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock();
+    $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock(); rushAdvance();
   } else if (type === 'end') {
     bossReward(); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); }
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
     $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${bossName()}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.`;
-    $('spectHint').textContent = ''; show('over', true);
+    $('spectHint').textContent = ''; show('over', true); rushAdvance();
   }
 };
 
@@ -372,7 +384,8 @@ $('choco').onclick = () => {
   const pr = v.play(); if (pr && pr.catch) pr.catch(() => { v.muted = true; v.play().catch(finish); });
 };
 /* ---------- códigos secretos ---------- */
-let lastBoss = false;
+let lastBoss = false, rush = false, lastRush = false;
+const RUSH = ['choco', 'exe', 'verity', 'final'];
 async function chocoThumb(blob) {
   try {
     const url = URL.createObjectURL(blob), v = document.createElement('video'); v.muted = true; v.src = url;
@@ -386,18 +399,18 @@ async function chocoThumb(blob) {
   x.fillStyle = '#5a3418'; x.fillRect(0, 0, 256, 256); x.fillStyle = '#fff'; x.font = 'bold 28px sans-serif'; x.textAlign = 'center'; x.fillText('ODIO EL', 128, 120); x.fillText('CHOCOLATE', 128, 156);
   return c.toDataURL();
 }
-async function playBoss(kind = 'choco') {
+async function playBoss(kind = 'choco', inRush = false) {
   stopIntro();
-  lastBoss = kind;
-  const exe = kind === 'exe', ver = kind === 'verity', def = exe ? GREEN_DEF : ver ? VERITY_DEF : CHOCO_DEF;
+  lastBoss = kind; rush = lastRush = inRush; clearTimeout(rushTimer); $('over').classList.remove('rushnext');
+  const exe = kind === 'exe', ver = kind === 'verity', fin = kind === 'final', def = fin ? GLITCH_DEF : exe ? GREEN_DEF : ver ? VERITY_DEF : CHOCO_DEF;
   show('loading', true); $('loadText').textContent = exe ? 'Corrompiendo la colina…' : 'Invocando al jefe…';
   game.sfx.init(def.drone);
   await new Promise(r => setTimeout(r, 30));
   try {
-    const plan = exe ? await getExeEntries() : ver ? [await getVerityEntry()] : [await getChocoEntry()];
+    const plan = fin ? [await getChocoEntry(), ...(await getExeEntries()), await getVerityEntry()] : exe ? await getExeEntries() : ver ? [await getVerityEntry()] : [await getChocoEntry()];
     $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
-    await game.start({ boss: true, bossKey: kind, music: exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 100 CPUs' : undefined,
-      perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: 9, hp: 14000 }, def, map: 0, cpus: 100, bots: plan.length, plan, diff: 1, size: ver ? 36 : 64, dur: 600,
+    await game.start({ boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 100 CPUs' : undefined,
+      perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: fin ? 7 : 9, hp: 14000 }, def, map: 0, cpus: fin ? 150 : 100, bots: plan.length, plan, diff: 1, size: fin ? 80 : ver ? 36 : 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {
     console.error(err); show('loading', false);
@@ -436,8 +449,8 @@ function updSummary() {
   $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
 }
 updSummary();
-$('retry').onclick = () => { show('over', false); $('over').classList.remove('troll'); lastBoss ? playBoss(lastBoss) : play(); };
-$('toMenu1').onclick = toMenu; $('toMenu2').onclick = toMenu;
+$('retry').onclick = () => { show('over', false); $('over').classList.remove('troll'); lastBoss ? playBoss(lastBoss, lastRush) : play(); };
+$('toMenu1').onclick = toMenu; $('toMenu2').onclick = () => { clearTimeout(rushTimer); $('over').classList.remove('rushnext'); toMenu(); };
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
 window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT' && !introActive()) play(); });
 
@@ -448,7 +461,7 @@ try {
   window.__title = title;
 } catch (err) { console.warn('Fondo 3D no disponible', err); $('bg3d').remove(); $('bgShade').remove(); }
 
-window.__game = game; window.__maps = MAP_DEFS; // útil para depurar en la consola
+window.__playBoss = (k, r) => playBoss(k, r); window.__game = game; window.__maps = MAP_DEFS; // útil para depurar en la consola
 
 runIntro();
 
@@ -491,5 +504,7 @@ function renderBossKeys() {
     box.appendChild(b);
   }
   box.classList.toggle('hidden', !box.children.length);
+  $('btnRush').classList.toggle('hidden', !(unlocks.choco && unlocks.exe && unlocks.verity));
 }
 renderBossKeys();
+$('btnRush').onclick = () => { if (confirm('¿Empezar ???: derrotar a todos los jefes seguidos y luego el BOSS FINAL?')) playBoss('choco', true); };

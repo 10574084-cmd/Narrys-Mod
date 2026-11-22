@@ -91,3 +91,6 @@ En los boss fights el jefe aparece a ~22 m de ti, se ve siempre en el minimapa (
 
 ## Derrota contra ODIO EL CHOCOLATE
 Si pierdes el boss fight del chocolate, en vez de los botones normales la pantalla queda en negro con el botón **🍫 Odias el chocolate** (revive una vez con el video) y **CLICKEA AQUÍ**, que abre la página de Odio el Troyano (ventana emergente). Reintentar y Menú vuelven al clicar o revivir.
+
+## ??? (jefe final)
+Al derrotar a los tres jefes (Odio el chocolate, Sonic.exe y amigos, Verity) aparece el botón **???** en el menú principal. Te hace derrotarlos otra vez seguidos y, al final, aparecen **todos los jefes a la vez** en la **Zona Glitch** (mezcla de todos los mapas, plana y sin techo) con **150 CPUs** y la canción `assets/music/final-zone.mp3`. Da el logro secreto «???».

@@ -107,6 +107,18 @@ export const TEX = {
     for (let i = 0; i <= 256; i += 64) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(256, i); x.stroke(); }
     return tex(c, 3, 3);
   },
+  // mapa final: bloques de colores al azar con líneas desplazadas (efecto glitch)
+  glitch() {
+    const [c, x] = mk(256, 256);
+    const pal = ['#ff00ff', '#00ffff', '#111111', '#ffffff', '#ff2020', '#20ff40', '#2030ff', '#ffe600', '#6a00ff', '#000000'];
+    for (let i = 0; i < 24; i++) for (let j = 0; j < 24; j++) { x.fillStyle = pal[(Math.random() * pal.length) | 0]; x.fillRect(i * 11, j * 11, 11, 11); }
+    for (let k = 0; k < 40; k++) { // franjas desplazadas
+      const y = (Math.random() * 256) | 0, h = 2 + ((Math.random() * 14) | 0), dx = ((Math.random() - 0.5) * 120) | 0;
+      x.drawImage(c, 0, y, 256, h, dx, y, 256, h);
+    }
+    for (let y = 0; y < 256; y += 4) { x.fillStyle = 'rgba(0,0,0,0.28)'; x.fillRect(0, y, 256, 1); }
+    return tex(c, 5, 5);
+  },
   grass(base = '#1f3a1c') {
     const [c, x] = mk();
     x.fillStyle = base; x.fillRect(0, 0, 256, 256);
