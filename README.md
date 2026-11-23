@@ -104,3 +104,6 @@ Al 66 % y al 33 % de vida los jefes entran en fase 2 y 3 con ataques propios (co
 
 ## Cooperativo (2 jugadores)
 Menú → **👥 Cooperativo**: uno pulsa «Crear sala» y pasa el código; el otro lo escribe y pulsa «Unirme». El **anfitrión** inicia la partida (normal, códigos, jefes, ???) y el invitado entra solo. Conexión directa WebRTC con PeerJS (`js/net.js`, sin servidor propio; usa el servidor público de PeerJS solo para el emparejado). El anfitrión simula todo; el invitado ve el mundo, se mueve, recoge armas y dispara (el anfitrión aplica el daño). Limitaciones: el invitado usa los nextbots integrados, no hay intro del jefe final y no puede revivir CPUs. `?nettest=bc` usa BroadcastChannel entre pestañas (solo para pruebas).
+
+## Armas del suelo con precio
+En partidas normales (sin cooperativo ni jefes) las armas del mapa muestran su precio en 🪙 sobre el arma y se cobran al recogerlas: revólver 15, subfusil 30, escopeta 35, granadas 60, francotirador 60, bazuca 100. La **primera arma de cada ronda es gratis**; las que sueltan los CPUs y las que compraste en la tienda también son gratis. Sin monedas suficientes no se recoge.

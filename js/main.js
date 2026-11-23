@@ -285,7 +285,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await hostStart({ skin: Shop.currentSkin(), bought: Shop.takeStock(), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await hostStart({ skin: Shop.currentSkin(), bought: Shop.takeStock(), priced: !(coop && coop.friend), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));

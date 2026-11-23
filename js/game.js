@@ -7,6 +7,7 @@ import { createHumanoid, animateHumanoid, makeNameTag } from './models.js';
 import { Sfx } from './audio.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA } from './settings.js';
 import { CPU_NAMES } from './names.js';
+import * as Shop from './shop.js';
 
 export const isTouch = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || 'ontouchstart' in window;
 
@@ -299,7 +300,7 @@ export class Game {
     this.intro = null; this.tele = []; this.darkT = 0; this._dark = null; this.spawnEntities();
     this.buildMini();
     this.sfx.init(def.drone);
-    this.chocoUsed = false; this.bossDead = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
+    this.freePick = true; this.chocoUsed = false; this.bossDead = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
     this.sceneT = 0; this.lampT = 0; this.stepT = 0;
     this.state = 'playing';
     this.resize();
@@ -766,7 +767,7 @@ export class Game {
       for (let t = 0; t < 40; t++, k++) {
         const ang = k * 2.4, rad = 2.2 + Math.floor(k / 8) * 1.2, x = P.x + Math.cos(ang) * rad, z = P.z + Math.sin(ang) * rad;
         if (W.collides(x, z, 0.4)) continue;
-        this.pickups.push(this.makePickup(type, x, z)); k++; break;
+        this.pickups.push(this.makePickup(type, x, z, null, true)); k++; break;
       }
     }
     this.toast(`🛒 ${list.length} arma${list.length > 1 ? 's' : ''} de la tienda en el suelo, a tu lado`, 3500);
@@ -854,13 +855,15 @@ export class Game {
   }
 
   // arma en el suelo con su rayo de luz. 'ammo' solo se indica en armas soltadas por un CPU
-  makePickup(type, x, z, ammo = null) {
+  makePickup(type, x, z, ammo = null, free = false) {
     const def = WEAPONS[type], mesh = new THREE.Group();
     const model = weaponModel(type); model.scale.setScalar(def.pk); model.position.y = 1.0; mesh.add(model);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 8, 1, true), new THREE.MeshBasicMaterial({ color: def.beam, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
     beam.position.y = 2.6; mesh.add(beam);
+    const price = !free && ammo === null && this.opts.priced ? Shop.FLOOR_PRICE[type] || 0 : 0;
+    if (price) { const tag = makeNameTag('🪙 ' + price); tag.position.y = 2.4; tag.scale.set(1.2, 0.3, 1); mesh.add(tag); }
     mesh.position.set(x, 0, z); this.scene.add(mesh);
-    return { type, x, z, mesh, model, taken: false, ph: Math.random() * 6, ammo, dropped: ammo !== null };
+    return { type, x, z, mesh, model, taken: false, ph: Math.random() * 6, ammo, dropped: ammo !== null, price };
   }
 
   // un CPU que muere con arma la deja a su lado, con la munición que le quedaba
@@ -1046,7 +1049,10 @@ export class Game {
     if (rcp) for (const pk of this.pickups) if (!pk.taken && Math.hypot(pk.x - rcp.x, pk.z - rcp.z) < 1.5) { pk.taken = true; pk.takenAt = this.time; pk.mesh.visible = false; this.coopSend({ t: 'give', type: pk.type, ammo: pk.ammo }); }
     if (p.alive && !this.guest) for (const pk of this.pickups) {
       if (pk.taken) continue;
-      if (Math.hypot(pk.x - p.x, pk.z - p.z) < 1.5) { pk.taken = true; pk.takenAt = this.time; pk.mesh.visible = false; this.giveWeapon(pk.type, pk.ammo); }
+      if (Math.hypot(pk.x - p.x, pk.z - p.z) < 1.5) {
+        if (pk.price && !this.freePick) { if (!Shop.spend(pk.price)) { if (this.time - (this._poorT || -9) > 2) { this._poorT = this.time; this.toast(`🪙 Te faltan monedas: cuesta ${pk.price} 🪙 (tienes ${Shop.coins()})`, 2000); } continue; } this.toast(`-${pk.price} 🪙 · ${WEAPONS[pk.type].name}`, 1500); }
+        else if (pk.price) { this.freePick = false; this.toast('🎁 ¡Tu primera arma de la ronda es gratis!', 2200); }
+        pk.taken = true; pk.takenAt = this.time; pk.mesh.visible = false; this.giveWeapon(pk.type, pk.ammo); }
     }
     if (!this.guest) for (const pk of this.pickups) if (pk.taken && !pk.dropped && (pk.type !== 'bazooka' || this.opts.boss) && this.time - pk.takenAt >= (this.opts.boss ? 20 : PICKUP_RESPAWN)) this.respawnPickup(pk);
     for (const pk of this.pickups) if (!pk.taken) { pk.ph += dt * 2; pk.model.rotation.y += dt * 1.6; pk.model.position.y = 1.0 + Math.sin(pk.ph) * 0.12; }

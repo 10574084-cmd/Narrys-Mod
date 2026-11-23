@@ -41,3 +41,7 @@ export function takeStock() {
   S.stock = {}; save(); return list;
 }
 export function resetShop() { S = { coins: 0, owned: ['default'], skin: 'default', stock: {} }; save(); }
+
+// precio de las armas del suelo en partidas normales (la primera de cada ronda es gratis)
+export const FLOOR_PRICE = { revolver: 15, smg: 30, shotgun: 35, grenade: 60, sniper: 60, bazooka: 100 };
+export function spend(n) { if (S.coins < n) return false; S.coins -= n; save(); return true; }
