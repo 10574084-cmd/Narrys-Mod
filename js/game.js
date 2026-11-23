@@ -284,7 +284,8 @@ export class Game {
       if (opts.vocal) { const v = this.music2 = new Audio(opts.vocal); v.loop = true; v.volume = 0; v.play().catch(() => {}); } // voces: suenan al acercarte al jefe
     }
     this.sens = 0.0022 * opts.sens;
-    const seed = (Math.random() * 1e9) | 0;
+    const seed = opts.seed != null ? opts.seed : (Math.random() * 1e9) | 0;
+    this.guest = !!(opts.coop && opts.coop.role === 'guest'); this.coopHost = !!(opts.coop && opts.coop.role === 'host'); this.hold = false; this.snap = null; this.peerModel = null;
     setMapSize(opts.size || 48);
     this.map = generateMap(def, seed);
     this.world = new World(this.map);
@@ -304,6 +305,7 @@ export class Game {
     this.resize();
     $('vignette').style.opacity = 0;
     if (!opts.intro) this.toast(opts.boss ? (opts.bossMsg || '🍫 ¡BOSS FIGHT! Derrota a ODIO EL CHOCOLATE con tus 100 CPUs') : '¡CORRE! Los nextbots llegan pronto…', 3500);
+    if (this.coopHost) this.hold = true; // el anfitrión espera a que el amigo termine de cargar
     this.last = performance.now();
     this.raf = requestAnimationFrame(t => this.loop(t));
   }
@@ -571,7 +573,34 @@ export class Game {
   }
 
   /* ------------------------------ ENTIDADES ------------------------------ */
+  createBots(o) {
+    // nextbots (aparecen escalonados)
+    this.bots = [];
+    const grace = 10, gap = 7;
+    for (let i = 0; i < o.bots; i++) {
+      const meme = this.memes.get(o.plan[i % o.plan.length].id);
+      const mat = new THREE.MeshBasicMaterial({ map: meme.tex, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, fog: false });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); mesh.visible = false;
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.haloTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.8 }));
+      halo.scale.set(5.2, 5.2, 1); halo.visible = false;
+      this.scene.add(mesh, halo);
+      this.bots.push({ type: 'bot', name: meme.name, meme, bw: Math.min(4.2, Math.max(1.2, 2.5 * meme.aspect)), x: 0, z: 0, r: 0.55, active: false, spawnAt: grace + i * gap, mesh, halo,
+        target: null, retarget: 0, path: null, pi: 0, repath: 0, lx: 0, lz: 0, stuckT: 0, phase: Math.random() * 6,
+        state: 'patrol', stun: 0, yaw: Math.random() * 6.28, visT: Math.random() * 0.25, stateT: 0, lostT: 0, lastX: 0, lastZ: 0, goalX: null, goalZ: null });
+    }
+    this.bossBot = null;
+    // ODIO EL CHOCOLATE (donde esté en el plan) es un jefe gigante con vida; tamaño y vida salen de las opciones
+    const cc = o.choco || { size: 9, hp: BOSS_HP };
+    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-choco') this.makeBoss(b, cc.size, cc.hp);
+    // Sonic.exe y sus amigos: jefes con 5000 de vida y el tamaño de un nextbot normal
+    for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP * (o.hpMul || 1)); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
+    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP * (o.hpMul || 1)); // Verity
+    this.bossBot = this.bots.find(b => b.boss) || null;
+    if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3 + (o.bossDelay || 0); });
+  }
+
   spawnEntities() {
+    if (this.guest) return this.spawnGuest();
     const free = this.map.free, W = this.world, o = this.opts;
     const pick = () => free[Math.floor(Math.random() * free.length)];
     const pw = W.cellWorld(pick());
@@ -599,37 +628,134 @@ export class Game {
         gun: null, gunModel: null, aim: 0, lostT: 0 });
     }
 
-    // nextbots (aparecen escalonados)
-    this.bots = [];
-    const grace = 10, gap = 7;
-    for (let i = 0; i < o.bots; i++) {
-      const meme = this.memes.get(o.plan[i % o.plan.length].id);
-      const mat = new THREE.MeshBasicMaterial({ map: meme.tex, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, fog: false });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); mesh.visible = false;
-      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.haloTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.8 }));
-      halo.scale.set(5.2, 5.2, 1); halo.visible = false;
-      this.scene.add(mesh, halo);
-      this.bots.push({ type: 'bot', name: meme.name, meme, bw: Math.min(4.2, Math.max(1.2, 2.5 * meme.aspect)), x: 0, z: 0, r: 0.55, active: false, spawnAt: grace + i * gap, mesh, halo,
-        target: null, retarget: 0, path: null, pi: 0, repath: 0, lx: 0, lz: 0, stuckT: 0, phase: Math.random() * 6,
-        state: 'patrol', stun: 0, yaw: Math.random() * 6.28, visT: Math.random() * 0.25, stateT: 0, lostT: 0, lastX: 0, lastZ: 0, goalX: null, goalZ: null });
-    }
-    this.bossBot = null;
-    // ODIO EL CHOCOLATE (donde esté en el plan) es un jefe gigante con vida; tamaño y vida salen de las opciones
-    const cc = o.choco || { size: 9, hp: BOSS_HP };
-    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-choco') this.makeBoss(b, cc.size, cc.hp);
-    // Sonic.exe y sus amigos: jefes con 5000 de vida y el tamaño de un nextbot normal
-    for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP * (o.hpMul || 1)); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
-    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP * (o.hpMul || 1)); // Verity
-    this.bossBot = this.bots.find(b => b.boss) || null;
-    if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3 + (o.bossDelay || 0); });
+    this.createBots(o);
+    if (this.coopHost) this.addRemoteCpu();
     if (o.intro) this.setupIntro();
     this.placeBought();
     if (o.boss) { // CPUs armados
       this.cpus.forEach((c, i) => {
+        if (c.remote) return;
         const type = o.allBazooka ? 'bazooka' : o.armStrong ? (i < 25 ? 'bazooka' : i < 45 ? 'grenade' : i < 65 ? 'sniper' : 'shotgun') : i < 5 ? 'bazooka' : i < 12 ? 'grenade' : i < 22 ? 'sniper' : i < 40 ? 'shotgun' : i < 62 ? 'smg' : 'revolver';
         c.gun = { type, ammo: WEAPONS[type].ammo * (o.allBazooka ? 6 : o.armStrong ? 4 : 2), cd: 0.6 + Math.random() }; this.setCpuGunModel(c, type);
       });
     }
+  }
+
+
+  /* ============================ COOPERATIVO ============================ */
+  coopSend(m) { if (this.net) this.net.send(m); }
+  makeCpuObj(name, x, z) {
+    const model = createHumanoid(false), tag = makeNameTag(name); model.add(tag);
+    model.position.set(x, 0, z); this.scene.add(model);
+    return { type: 'cpu', name, x, z, r: 0.4, alive: true, model, tag, skill: 0.5, reactTime: 1, react: 0, mode: 'wander', path: null, pi: 0, repath: 0, idle: 0, stamina: 1, tired: false, yaw: 0, spd: 0, lx: x, lz: z, stuckT: 0, gun: null, gunModel: null, aim: 0, lostT: 0 };
+  }
+  addRemoteCpu() {
+    const P = this.player, sp = this.freeSpotNear(P.x, P.z, 2) || { x: P.x + 1, z: P.z };
+    const c = this.makeCpuObj(this.opts.coop.friend || 'Amigo', sp.x, sp.z);
+    c.remote = true; this.cpus.push(c);
+  }
+  coopPk() { return this.pickups.map(p => [p.type, Math.round(p.x * 100) / 100, Math.round(p.z * 100) / 100, p.taken ? 1 : 0, p.ammo, p.dropped ? 1 : 0]); }
+  coopInit() {
+    const rc = this.cpus.find(c => c.remote), P = this.player;
+    return { names: this.cpus.map(c => c.name), self: this.cpus.indexOf(rc), sx: rc.x, sz: rc.z, yaw: this.yaw, hostName: P.name, pk: this.coopPk() };
+  }
+  setPickups(list) {
+    list.forEach((e, i) => {
+      let pk = this.pickups[i];
+      if (!pk) { pk = this.makePickup(e[0], e[1], e[2], e[4]); pk.dropped = !!e[5]; this.pickups.push(pk); }
+      pk.taken = !!e[3]; pk.mesh.visible = !pk.taken;
+    });
+  }
+  spawnGuest() {
+    const o = this.opts, I = o.coopInit;
+    this.player = { type: 'player', name: o.name || 'Jugador', x: I.sx, z: I.sz, r: 0.35, alive: true, stamina: 1, tired: false, bob: 0, y: 0, vy: 0 };
+    this.yaw = I.yaw; this.pitch = 0;
+    this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null, null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
+    this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
+    this.setPickups(I.pk);
+    this.cpus = I.names.map((n, i) => { const c = this.makeCpuObj(n, I.sx, I.sz); if (i === I.self) c.self = true; return c; });
+    this.createBots(o);
+    const pm = createHumanoid(false); pm.add(makeNameTag(I.hostName || 'Anfitrión')); pm.position.set(I.sx, 0, I.sz); pm.visible = false; this.scene.add(pm);
+    this.peerModel = { m: pm, x: I.sx, z: I.sz, yaw: 0, alive: true, spd: 0 };
+  }
+  coopTick(dt) { // anfitrión: manda el estado del mundo ~15 veces por segundo
+    if (!this.coopHost || !this.net) return;
+    this._ct = (this._ct || 0) + dt; if (this._ct < 1 / 15) return; this._ct = 0;
+    const r = v => Math.round(v * 100) / 100, c = [];
+    for (const e of this.cpus) c.push(r(e.x), r(e.z), r(e.yaw || 0), e.alive ? 1 : 0, r(e.spd || 0));
+    const b = this.bots.map(x => [x.active ? 1 : 0, r(x.x), r(x.z), Math.round(x.hp || 0), x.stun > 0 ? 1 : 0, x.state === 'chase' ? 1 : x.state === 'search' ? 2 : 0, x.dead ? 1 : 0]);
+    const P = this.player;
+    this.net.send({ t: 's', tm: r(this.time), c, b, h: [r(P.x), r(P.z), r(this.yaw), P.alive ? 1 : 0] });
+    const sig = this.pickups.length + ':' + this.pickups.map(p => p.taken ? 1 : 0).join('');
+    if (sig !== this._pkSig) { this._pkSig = sig; this.net.send({ t: 'pk', l: this.coopPk() }); }
+  }
+  coopSendPos(dt) { // invitado: manda su posición ~20 veces por segundo
+    this._cp = (this._cp || 0) + dt; if (this._cp < 0.05) return;
+    const p = this.player, r = v => Math.round(v * 100) / 100, sp = Math.hypot(p.x - (this._lpx ?? p.x), p.z - (this._lpz ?? p.z)) / this._cp;
+    this._lpx = p.x; this._lpz = p.z; this._cp = 0;
+    this.coopSend({ t: 'p', x: r(p.x), z: r(p.z), yaw: r(this.yaw), s: r(Math.min(sp, 12)) });
+  }
+  coopMsg(m) {
+    const rc = this.cpus && this.cpus.find(c => c.remote);
+    if (this.coopHost) {
+      if (m.t === 'p' && rc && rc.alive) { rc.x = m.x; rc.z = m.z; rc.yaw = m.yaw + Math.PI; rc.spd = m.s; }
+      else if (m.t === 'fire') this.coopFire(m);
+      else if (m.t === 'leave' && rc && rc.alive) { rc.alive = false; rc.tag.visible = false; this.feed(`🔌 ${rc.name} salió de la partida`); }
+    } else if (this.guest) {
+      if (m.t === 's') this.snap = m;
+      else if (m.t === 'pk') this.setPickups(m.l);
+      else if (m.t === 'give') this.giveWeapon(m.type, m.ammo);
+      else if (m.t === 'feed') this.feed(m.m);
+      else if (m.t === 'toast') this.toast(m.m, m.ms || 2200);
+      else if (m.t === 'dead') this.coopDead(m);
+      else if (m.t === 'end') this.coopEnd(m);
+    }
+  }
+  coopFire(m) { // el invitado disparó: el anfitrión aplica el efecto
+    const rc = this.cpus.find(c => c.remote); if (!rc || !rc.alive) return;
+    if (m.k === 'blast') { const def = WEAPONS[m.w]; if (def && def.blast) this.explode(m.x, m.y, m.z, def, rc.name); }
+    else if (m.k === 'boss') { const b = this.bots[m.i]; if (b && b.boss) this.hitBoss(b, Math.min(200, +m.dmg || 0)); }
+    else if (m.k === 'stun') { const b = this.bots[m.i]; if (b && !b.boss) { const was = b.stun > 0; this.stunBot(b, Math.min(8, +m.s || 3)); if (!was) this.feed(`⚡ ${rc.name} aturdió a ${b.name}`); } }
+  }
+  coopDead(m) {
+    const bot = this.bots.find(b => b.name === m.by) || this.bots[0];
+    this.player.alive = false; this.state = 'dead'; this.killer = bot; this.place = m.place;
+    this.feed(`💀 Te atrapó ${m.by}`, true); this.sfx.scare(); this.sfx.setThreat(0);
+    const img = $('scareImg'); img.src = bot.meme.scare;
+    $('scare').classList.remove('hidden'); $('vignette').style.opacity = 0; this.showBoard(false); this.specIdx = 0;
+    setTimeout(() => { $('scare').classList.add('hidden'); if (this.state === 'dead' || this.state === 'ended') this.onEvent('dead', { by: m.by, place: m.place, total: this.cpus.length + 1, time: this.time }); }, 1700);
+  }
+  coopEnd(m) {
+    if (this.endShown) return; this.endShown = true; this.stopMusic(); this.bossDead = !!m.bd; this.state = 'ended';
+    if (m.ty === 'win') { this.sfx.win(); this.onEvent('win', m.d); } else this.onEvent('end', m.d);
+  }
+  coopApply(dt) { // invitado: aplica la última foto del mundo con suavizado
+    const s = this.snap; if (!s) return;
+    const k = Math.min(1, dt * 14), ang = (a, b) => { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * k; };
+    this.time = s.tm;
+    this.cpus.forEach((c, i) => {
+      const o = i * 5; if (o + 4 >= s.c.length) return;
+      const tx = s.c[o], tz = s.c[o + 1];
+      if (!c.init) { c.x = tx; c.z = tz; c.init = true; } else { c.x += (tx - c.x) * k; c.z += (tz - c.z) * k; }
+      c.yaw = ang(c.yaw, s.c[o + 2]); c.alive = !!s.c[o + 3]; c.spd = s.c[o + 4];
+      if (!c.alive) { c.tag.visible = false; animateHumanoid(c.model, dt, 0, true); }
+    });
+    s.b.forEach((e, i) => {
+      const b = this.bots[i]; if (!b) return;
+      const was = b.dead; b.active = !!e[0] && !e[6]; b.dead = !!e[6]; b.hp = e[3]; b.stun = e[4] ? 1 : 0; b.state = e[5] === 1 ? 'chase' : e[5] === 2 ? 'search' : 'patrol';
+      if (e[0] && !b.init) { b.x = e[1]; b.z = e[2]; b.init = true; } else { b.x += (e[1] - b.x) * k; b.z += (e[2] - b.z) * k; }
+      b.mesh.visible = b.active; b.halo.visible = b.active;
+      if (b.dead && !was) { this.explode(b.x, (b.bh || 2.5) / 2, b.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.sfx.win(); this.toast('🏆 ¡JEFE DERROTADO!', 3000); }
+    });
+    const pm = this.peerModel, h = s.h;
+    if (pm) {
+      const dx = h[0] - pm.x, dz = h[1] - pm.z; pm.spd = Math.min(10, Math.hypot(dx, dz) * 15); pm.x += dx * k; pm.z += dz * k; pm.yaw = ang(pm.yaw, h[2] + Math.PI); pm.alive = !!h[3];
+      pm.m.visible = pm.alive; pm.m.position.set(pm.x, 0, pm.z); pm.m.rotation.y = pm.yaw; animateHumanoid(pm.m, dt, pm.spd, false);
+    }
+  }
+  updateGuest(dt) {
+    this.updatePlayer(dt); this.updateWeapons(dt); this.coopApply(dt);
+    this.updateVisuals(dt); this.updateHud(); this.coopSendPos(dt);
   }
 
   // armas compradas en la tienda: aparecen en el suelo alrededor del jugador
@@ -772,8 +898,8 @@ export class Game {
   // mantén E (o el botón 💚) cerca del cuerpo de un CPU para revivirlo
   updateRevive(dt) {
     const p = this.player; let target = null, bd = REVIVE_RANGE;
-    if (p.alive) for (const c of this.cpus) {
-      if (c.alive) continue;
+    if (p.alive && !this.guest) for (const c of this.cpus) {
+      if (c.alive || c.remote) continue;
       const d = Math.hypot(c.x - p.x, c.z - p.z);
       if (d < bd) { bd = d; target = c; }
     }
@@ -871,17 +997,21 @@ export class Game {
     this.muzzleT = 0.07;
     if (loud) {
       const t = Math.min(wt, bt);
-      this.explode(cam.position.x + d.x * t, Math.max(0.3, cam.position.y + d.y * t), cam.position.z + d.z * t, def);
+      const ex = cam.position.x + d.x * t, ey = Math.max(0.3, cam.position.y + d.y * t), ez = cam.position.z + d.z * t;
+      if (this.guest) this.coopSend({ t: 'fire', k: 'blast', w: w.type, x: ex, y: ey, z: ez });
+      this.explode(ex, ey, ez, def);
     } else if (best && bt <= wt) {
+      if (this.guest) this.coopSend(best.boss ? { t: 'fire', k: 'boss', i: this.bots.indexOf(best), dmg: def.dmg } : { t: 'fire', k: 'stun', i: this.bots.indexOf(best), s: def.stun });
       if (best.boss) this.hitBoss(best, def.dmg);
       else { const was = best.stun > 0; this.stunBot(best, def.stun); if (!was) { this.toast(`¡${best.name.toUpperCase()} aturdido!`, 1200); this.onEvent('stat', { k: 'stun' }); } }
     }
     if (w.ammo <= 0) this.emptyT = 0.6;
   }
 
-  stunBot(b, secs) { if (b.boss) return; b.stun = secs; b.path = null; }
+  stunBot(b, secs) { if (b.boss || this.guest) return; b.stun = secs; b.path = null; }
 
   banish(b, secs) {
+    if (this.guest) return;
     const free = this.map.free, W = this.world, P = this.player;
     let best = null, bd = -1;
     for (let k = 0; k < 30; k++) {
@@ -912,11 +1042,13 @@ export class Game {
   updateWeapons(dt) {
     const p = this.player, w = this.weapon;
     // recogida de armas
-    if (p.alive) for (const pk of this.pickups) {
+    const rcp = this.coopHost && this.cpus.find(c => c.remote && c.alive);
+    if (rcp) for (const pk of this.pickups) if (!pk.taken && Math.hypot(pk.x - rcp.x, pk.z - rcp.z) < 1.5) { pk.taken = true; pk.takenAt = this.time; pk.mesh.visible = false; this.coopSend({ t: 'give', type: pk.type, ammo: pk.ammo }); }
+    if (p.alive && !this.guest) for (const pk of this.pickups) {
       if (pk.taken) continue;
       if (Math.hypot(pk.x - p.x, pk.z - p.z) < 1.5) { pk.taken = true; pk.takenAt = this.time; pk.mesh.visible = false; this.giveWeapon(pk.type, pk.ammo); }
     }
-    for (const pk of this.pickups) if (pk.taken && !pk.dropped && (pk.type !== 'bazooka' || this.opts.boss) && this.time - pk.takenAt >= (this.opts.boss ? 20 : PICKUP_RESPAWN)) this.respawnPickup(pk);
+    if (!this.guest) for (const pk of this.pickups) if (pk.taken && !pk.dropped && (pk.type !== 'bazooka' || this.opts.boss) && this.time - pk.takenAt >= (this.opts.boss ? 20 : PICKUP_RESPAWN)) this.respawnPickup(pk);
     for (const pk of this.pickups) if (!pk.taken) { pk.ph += dt * 2; pk.model.rotation.y += dt * 1.6; pk.model.position.y = 1.0 + Math.sin(pk.ph) * 0.12; }
     // disparo
     if (this.fireHeld && w && WEAPONS[w.type].auto && p.alive) this.fireReq = true; // armas automáticas: mantener para disparar
@@ -973,13 +1105,13 @@ export class Game {
     }
     b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.active = true; b.mesh.visible = true; b.halo.visible = true;
     b.state = 'patrol'; b.goalX = null; b.stateT = 0;
-    this.toast(`¡${b.name.toUpperCase()} apareció!`, 2200);
+    this.toast(`¡${b.name.toUpperCase()} apareció!`, 2200); this.coopSend({ t: 'toast', m: `¡${b.name.toUpperCase()} apareció!` });
     this.sfx.spawn();
   }
 
   botSpeed() { return 6.0 * DIFF[this.opts.diff] * (1 + 0.35 * Math.min(1, this.time / this.round)); }
 
-  alive() { return (this.player.alive ? 1 : 0) + this.cpus.filter(c => c.alive).length; }
+  alive() { return (this.guest ? ((this.snap && this.snap.h[3]) ? 1 : 0) : (this.player.alive ? 1 : 0)) + this.cpus.filter(c => c.alive).length; }
 
   /* ------------------------------ BUCLE ------------------------------ */
   loop(now) {
@@ -1001,7 +1133,7 @@ export class Game {
   }
 
   update(dt) {
-    if (this.state === 'paused') return;
+    if (this.state === 'paused' || this.hold) return;
     this.time += dt;
     if (this.def.glitch && this.scene) { // mapa final: colores y suelo parpadean
       this.glT = (this.glT || 0) - dt;
@@ -1013,6 +1145,7 @@ export class Game {
       }
     }
     if (this.rainbowMats && this.rainbowMats.length) { const h = (this.time * 0.35) % 1; for (const m of this.rainbowMats) m.color.setHSL(h, 0.9, 0.55); }
+    if (this.guest) { this.updateGuest(dt); return; }
     if (this.tele && this.tele.length) this.updateTele(dt);
     if (this.darkT !== undefined && this.scene) { // apagón de Verity
       const dk = this.darkT > 0; if (dk) this.darkT -= dt;
@@ -1029,6 +1162,7 @@ export class Game {
     this.separate();
     this.updateVisuals(dt);
     this.updateHud();
+    this.coopTick(dt);
     if (!this.endShown && this.time >= this.round) this.endRound();
   }
 
@@ -1122,6 +1256,7 @@ export class Game {
 
   updateCpu(c, dt) {
     const W = this.world;
+    if (c.remote) { if (!c.alive) animateHumanoid(c.model, dt, 0, true); return; } // el amigo lo controla él mismo
     if (!c.alive) { animateHumanoid(c.model, dt, 0, true); return; }
     if (c.invuln > 0) c.invuln -= dt;
     // percepción: nextbot más cercano y el más cercano que realmente ve
@@ -1423,6 +1558,7 @@ export class Game {
   }
 
   hitBoss(b, dmg) {
+    if (this.guest) { b.flash = 0.12; return; }
     if (!b.active || b.hp <= 0) return;
     b.hp = Math.max(0, b.hp - dmg); b.flash = 0.12;
     if (b.hp <= 0) this.bossDie(b);
@@ -1458,6 +1594,7 @@ export class Game {
       e.tag.visible = false; this.sfx.thud(clamp(1 - Math.hypot(e.x - this.player.x, e.z - this.player.z) / 40, 0.03, 0.5));
       this.dropCpuGun(e);
       this.feed(`💀 ${e.name} fue atrapado por ${bot.name}`);
+      if (e.remote) this.coopSend({ t: 'dead', by: bot.name, place: this.cpus.filter(c => c.alive).length + (this.player.alive ? 1 : 0) + 1 });
       this.killer = bot;
       if (!this.player.alive && !this.cpus.some(c => c.alive)) this.endRound();
     } else {
@@ -1494,6 +1631,7 @@ export class Game {
     const survivors = this.alive();
     if (this.player.alive) { this.state = 'ended'; this.sfx.win(); this.onEvent('win', { survivors, total: this.cpus.length + 1, time: this.time }); }
     else { this.state = 'ended'; this.onEvent('end', { survivors, total: this.cpus.length + 1 }); }
+    if (this.coopHost) { const rc = this.cpus.find(c => c.remote); this.coopSend({ t: 'end', ty: rc && rc.alive ? 'win' : 'end', bd: this.bossDead, d: { survivors, total: this.cpus.length + 1, time: this.time } }); }
   }
 
   cycleSpectate() { this.specIdx++; }
@@ -1523,11 +1661,11 @@ export class Game {
     // humanoides
     for (const c of this.cpus) {
       const d = Math.hypot(c.x - cam.position.x, c.z - cam.position.z), far = this.dist > 0 && d > this.dist;
-      c.model.visible = !far; // lejos: no se dibuja ni se anima (más FPS)
+      c.model.visible = !far && !c.self; // lejos: no se dibuja ni se anima (más FPS)
       if (far) continue;
       c.model.position.x = c.x; c.model.position.z = c.z;
       if (c.alive) { c.model.position.y = 0; c.model.rotation.y = c.yaw; animateHumanoid(c.model, dt, c.spd, false); }
-      if (c.alive) c.tag.visible = this.extra.names && d < 26;
+      if (c.alive) c.tag.visible = this.extra.names && d < 26 && !c.self;
     }
     const nowMs = performance.now();
     for (const m of this.animated || []) if (nowMs - (m.last || 0) > 50) { m.last = nowMs; m.update(); }
@@ -1646,6 +1784,7 @@ export class Game {
   }
 
   feed(msg, me = false) {
+    if (this.coopHost && !this._noFwd) this.coopSend({ t: 'feed', m: msg });
     const f = $('feed'), d = document.createElement('div'); d.textContent = msg; if (me) d.className = 'me';
     f.appendChild(d); setTimeout(() => d.remove(), 7000);
     while (f.children.length > 6) f.firstChild.remove();

@@ -5,6 +5,7 @@ import { TitleScene } from './title.js';
 import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
 import * as A from './achievements.js';
 import * as Shop from './shop.js';
+import { Net } from './net.js';
 import { runIntro, introActive, stopIntro } from './intro.js';
 import { MEME_KINDS, makeMemeCanvas, buildMemePool, addMedia, removeMedia, clearMedia } from './memes.js';
 
@@ -262,12 +263,14 @@ const game = new Game($('c'));
 const show = (id, on) => $(id).classList.toggle('hidden', !on);
 
 function toMenu() {
+  coopLeaveGame();
   go('scrMain'); if (title) { title.resize(); title.start(); }
   game.stop(); show('hud', false); show('over', false); show('pause', false); show('scare', false); show('menu', true);
   if (document.pointerLockElement) document.exitPointerLock();
 }
 
 async function play() {
+  if (guestBlock()) return;
   stopIntro();
   show('loading', true); $('loadText').textContent = 'Generando mapa…';
   game.sfx.init(MAP_DEFS[cfg.map].drone); // el clic cuenta como gesto para activar el audio
@@ -282,7 +285,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await game.start({ skin: Shop.currentSkin(), bought: Shop.takeStock(), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await hostStart({ skin: Shop.currentSkin(), bought: Shop.takeStock(), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -400,6 +403,7 @@ async function chocoThumb(blob) {
   return c.toDataURL();
 }
 async function playBoss(kind = 'choco', inRush = false) {
+  if (guestBlock()) return;
   stopIntro();
   lastBoss = kind; rush = lastRush = inRush; clearTimeout(rushTimer); $('over').classList.remove('rushnext');
   const exe = kind === 'exe', ver = kind === 'verity', fin = kind === 'final', def = fin ? GLITCH_DEF : exe ? GREEN_DEF : ver ? VERITY_DEF : CHOCO_DEF;
@@ -409,7 +413,7 @@ async function playBoss(kind = 'choco', inRush = false) {
   try {
     const plan = fin ? [await getChocoEntry(), ...(await getExeEntries()), await getVerityEntry()] : exe ? await getExeEntries() : ver ? [await getVerityEntry()] : [await getChocoEntry()];
     $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
-    await game.start({ skin: Shop.currentSkin(), bought: Shop.takeStock(), boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 55 CPUs' : undefined,
+    await hostStart({ skin: Shop.currentSkin(), bought: Shop.takeStock(), boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 55 CPUs' : undefined,
       perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: fin ? 7 : 9, hp: fin ? 80000 : 14000 }, def, map: 0, cpus: fin ? 150 : ver ? 55 : 100, intro: fin, allBazooka: fin, bossDelay: ver ? 12 : 0, armStrong: ver, bossRamp: ver ? 40 : 0, hpMul: fin ? 8 : 1, bots: plan.length, plan, diff: 1, size: fin ? 80 : ver ? 42 : 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {
@@ -449,7 +453,7 @@ function updSummary() {
   $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
 }
 updSummary();
-$('retry').onclick = () => { show('over', false); $('over').classList.remove('troll'); lastBoss ? playBoss(lastBoss, lastRush) : play(); };
+$('retry').onclick = () => { if (guestBlock()) return; show('over', false); $('over').classList.remove('troll'); lastBoss ? playBoss(lastBoss, lastRush) : play(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = () => { clearTimeout(rushTimer); $('over').classList.remove('rushnext'); toMenu(); };
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
 window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT' && !introActive()) play(); });
@@ -533,3 +537,102 @@ function renderBossKeys() {
 }
 renderBossKeys();
 $('btnRush').onclick = () => playBoss('choco', true);
+
+/* ---------- cooperativo (WebRTC con código de sala) ---------- */
+let coop = null; // { net, role: 'host'|'guest', friend }
+let readyRes = null;
+const ALLDEFS = () => [...MAP_DEFS, CHOCO_DEF, GREEN_DEF, VERITY_DEF, GLITCH_DEF];
+const guestBlock = () => { if (coop && coop.role === 'guest' && coop.friend) { alert('En el cooperativo solo el anfitrión inicia o reinicia la partida. Espera a que empiece.'); return true; } return false; };
+function coopUi() {
+  const on = !!(coop && coop.friend);
+  $('coStatus').textContent = !coop ? '' : on ? `✔ Conectado con ${coop.friend} (${coop.role === 'host' ? 'tú eres el anfitrión: inicia la partida desde el menú' : 'espera a que el anfitrión inicie la partida'})` : 'Esperando a tu amigo… pásale el código.';
+  $('coLeave').classList.toggle('hidden', !coop);
+  $('coCode').textContent = coop && coop.role === 'host' ? coop.net.code : '';
+  $('summary').dataset.coop = on ? '1' : '';
+  let b = $('coopBadge'); if (!b) { b = document.createElement('p'); b.id = 'coopBadge'; b.className = 'hint'; b.style.textAlign = 'center'; $('summary').after(b); }
+  b.textContent = on ? `👥 Cooperativo con ${coop.friend} · ${coop.role === 'host' ? 'tú inicias la partida' : 'espera al anfitrión'}` : '';
+}
+function coopClose(msg) {
+  if (coop) { try { coop.net.close(); } catch { /* nada */ } }
+  coop = null; game.net = null; coopUi(); if (msg) $('coStatus').textContent = msg;
+}
+function coopWire(net, role) {
+  net.onmsg = m => coopOnMsg(m);
+  net.onclose = () => {
+    if (!coop || coop.net !== net) return;
+    const was = coop.friend; coopClose(was ? `🔌 ${was} se desconectó.` : '');
+    if (game.state === 'playing' || game.state === 'dead') { if (game.coopHost) { const rc = game.cpus.find(c => c.remote); if (rc) rc.alive = false; } game.net = null; }
+  };
+}
+$('coHost').onclick = async () => {
+  if (coop) return;
+  $('coStatus').textContent = 'Creando sala…';
+  const net = new Net(); coop = { net, role: 'host', friend: '' }; coopWire(net, 'host');
+  try { await net.host(() => {}); coopUi(); } catch (e) { coopClose('❌ ' + e.message); }
+};
+$('coJoin').onclick = async () => {
+  if (coop) return;
+  const code = $('coIn').value.trim(); if (code.length < 4) { $('coStatus').textContent = 'Escribe el código de la sala.'; return; }
+  $('coStatus').textContent = 'Conectando…';
+  const net = new Net(); coop = { net, role: 'guest', friend: '' }; coopWire(net, 'guest');
+  try { await net.join(code); net.send({ t: 'hello', name: cfg.name || 'Jugador' }); } catch (e) { coopClose('❌ ' + e.message); }
+};
+$('coLeave').onclick = () => { if (coop) { coop.net.send({ t: 'bye' }); } coopClose('Saliste de la sala.'); };
+
+function coopOnMsg(m) {
+  if (!coop) return;
+  if (m.t === 'hello' && coop.role === 'host') { coop.friend = String(m.name || 'Amigo').slice(0, 20); coop.net.send({ t: 'welcome', name: cfg.name || 'Jugador' }); coopUi(); }
+  else if (m.t === 'welcome' && coop.role === 'guest') { coop.friend = String(m.name || 'Anfitrión').slice(0, 20); coopUi(); }
+  else if (m.t === 'start' && coop.role === 'guest') coopGuestStart(m);
+  else if (m.t === 'ready' && coop.role === 'host') { if (readyRes) { readyRes(); readyRes = null; } }
+  else if (m.t === 'hostleft' && coop.role === 'guest') { if (game.state !== 'menu') { toMenu(); alert('El anfitrión salió de la partida. Espera a que inicie otra.'); } }
+  else if (m.t === 'bye') coopClose(`${coop.friend || 'Tu amigo'} cerró la sala.`);
+  else if (game.state !== 'menu') game.coopMsg(m);
+}
+function coopLeaveGame() {
+  if (!coop || !coop.friend) return;
+  if (game.state === 'menu') return;
+  coop.net.send({ t: coop.role === 'host' ? 'hostleft' : 'leave' });
+}
+// anfitrión: arranca la partida y avisa al amigo (espera a que cargue)
+async function hostStart(O, P) {
+  const co = coop && coop.role === 'host' && coop.friend && coop.net.open ? coop : null;
+  if (co) { O.coop = { role: 'host', friend: co.friend }; O.seed = (Math.random() * 1e9) | 0; O.intro = false; }
+  await game.start(O, P);
+  if (!co) return;
+  game.net = co.net;
+  const o = {};
+  for (const k of ['boss', 'bossKey', 'bossMsg', 'music', 'vocal', 'choco', 'cpus', 'bots', 'diff', 'size', 'dur', 'allBazooka', 'hpMul', 'bossDelay', 'armStrong', 'bossRamp', 'seed']) if (O[k] !== undefined) o[k] = O[k];
+  o.def = game.def.id; o.plan = O.plan.map(e => e.id); o.lastBoss = lastBoss;
+  $('loadText').textContent = 'Esperando a que tu amigo cargue…';
+  co.net.send({ t: 'start', o, init: game.coopInit() });
+  await new Promise(r => { readyRes = r; setTimeout(() => { if (readyRes) { readyRes = null; r(); } }, 40000); });
+  game.hold = false;
+}
+async function entryById(id) {
+  if (id === 'secret-choco') return getChocoEntry();
+  if (String(id).startsWith('secret-exe-')) return (await getExeEntries()).find(e => e.id === id);
+  if (id === 'secret-verity') return getVerityEntry();
+  const pool = await fullPool(); return pool.find(e => e.id === id) || pool[Math.floor(Math.random() * pool.length)];
+}
+async function coopGuestStart(m) {
+  stopIntro(); clearTimeout(rushTimer); show('over', false); $('over').classList.remove('troll', 'rushnext'); show('pause', false);
+  show('loading', true); $('loadText').textContent = 'Entrando a la partida de tu amigo…';
+  const def = ALLDEFS().find(d => d.id === m.o.def) || MAP_DEFS[0];
+  game.sfx.init(def.drone);
+  await new Promise(r => setTimeout(r, 30));
+  try {
+    const plan = await Promise.all(m.o.plan.map(entryById));
+    lastBoss = m.o.lastBoss || false; rush = lastRush = false;
+    const o = { ...m.o, def, plan, skin: Shop.currentSkin(), bought: [], perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name, map: 0, coop: { role: 'guest' }, coopInit: m.init, intro: false };
+    await game.start(o, plan);
+    game.net = coop.net;
+  } catch (err) {
+    console.error(err); show('loading', false); alert('Error al entrar a la partida: ' + (err && err.message ? err.message : err)); return;
+  }
+  if (title) title.pause();
+  A.add('games'); A.unlock('first_game');
+  show('menu', false); show('loading', false); show('hud', true); game.lock();
+  coop.net.send({ t: 'ready' });
+}
+coopUi();

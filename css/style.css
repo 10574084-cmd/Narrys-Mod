@@ -286,3 +286,5 @@ body.touch .slot { width: 54px; height: 48px; } body.touch #hotbar { gap: 4px; }
 .shopItem small { display: block; color: #ffd24d; margin-top: 4px; }
 .shopItem.on { border-color: #4cff88; box-shadow: 0 0 12px rgba(76,255,136,.35); }
 .shopItem.poor { opacity: .55; }
+.coCode { font: 800 1.6rem monospace; letter-spacing: .3em; color: #ffd24d; margin-left: 12px; }
+.coInput { width: 130px; padding: 10px; font: 800 1.2rem monospace; letter-spacing: .25em; text-transform: uppercase; text-align: center; border-radius: 8px; border: 1px solid #34343e; background: #111; color: #fff; }

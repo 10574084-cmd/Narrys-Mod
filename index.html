@@ -48,11 +48,26 @@
           <button class="menuBtn" data-go="scrOpts">⚙️ Opciones</button>
           <button class="menuBtn" data-go="scrMemes">🖼️ Memes / nextbots</button>
           <button class="menuBtn" id="btnShop">🛒 Tienda</button>
+          <button class="menuBtn" data-go="scrCoop">👥 Cooperativo</button>
           <button class="menuBtn" data-go="scrCodes">🔑 Códigos secretos</button>
           <button class="menuBtn hidden" id="btnRush">???</button>
         </div>
         <div id="mapChips" class="chips"></div>
         <p class="hint" id="summary" style="text-align:center"></p>
+      </div>
+
+      <!-- COOPERATIVO -->
+      <div id="scrCoop" class="screen hidden">
+        <section class="card">
+          <h2>👥 Cooperativo con un amigo</h2>
+          <p class="hint">Uno crea la sala y le pasa el <b>código</b> al otro. El <b>anfitrión</b> elige y empieza la partida (partida normal, códigos secretos, jefes o ???); el amigo entra solo. Se ven, corren juntos y los dos pueden recoger armas y disparar.</p>
+          <div class="row"><button id="coHost" class="btn" type="button">➕ Crear sala</button><span id="coCode" class="coCode"></span></div>
+          <div class="row" style="margin-top:10px"><input id="coIn" maxlength="5" placeholder="CÓDIGO" autocomplete="off" spellcheck="false" class="coInput"><button id="coJoin" class="btn" type="button">🔗 Unirme</button></div>
+          <p class="hint" id="coStatus"></p>
+          <button id="coLeave" class="btn ghost hidden" type="button">Salir de la sala</button>
+          <p class="hint">En el cooperativo el amigo usa los nextbots integrados (no los que subiste tú) y no hay intro del jefe final.</p>
+        </section>
+        <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>
 
       <!-- TIENDA -->

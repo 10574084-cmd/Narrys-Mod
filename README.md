@@ -101,3 +101,6 @@ Ganas 🪙 al sobrevivir (1 cada 12–15 s), al ganar y al derrotar jefes (200; 
 
 ## Fases de los jefes
 Al 66 % y al 33 % de vida los jefes entran en fase 2 y 3 con ataques propios (con aviso en el suelo): Sonic.exe embiste en línea recta, Tails Doll se teletransporta junto a su objetivo, Knuckles.exe pisotea con área, Verity apaga las luces y Odio el chocolate lanza lluvia de chocolate.
+
+## Cooperativo (2 jugadores)
+Menú → **👥 Cooperativo**: uno pulsa «Crear sala» y pasa el código; el otro lo escribe y pulsa «Unirme». El **anfitrión** inicia la partida (normal, códigos, jefes, ???) y el invitado entra solo. Conexión directa WebRTC con PeerJS (`js/net.js`, sin servidor propio; usa el servidor público de PeerJS solo para el emparejado). El anfitrión simula todo; el invitado ve el mundo, se mueve, recoge armas y dispara (el anfitrión aplica el daño). Limitaciones: el invitado usa los nextbots integrados, no hay intro del jefe final y no puede revivir CPUs. `?nettest=bc` usa BroadcastChannel entre pestañas (solo para pruebas).
