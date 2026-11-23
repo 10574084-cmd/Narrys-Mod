@@ -288,3 +288,12 @@ body.touch .slot { width: 54px; height: 48px; } body.touch #hotbar { gap: 4px; }
 .shopItem.poor { opacity: .55; }
 .coCode { font: 800 1.6rem monospace; letter-spacing: .3em; color: #ffd24d; margin-left: 12px; }
 .coInput { width: 130px; padding: 10px; font: 800 1.2rem monospace; letter-spacing: .25em; text-transform: uppercase; text-align: center; border-radius: 8px; border: 1px solid #34343e; background: #111; color: #fff; }
+#credits { position: fixed; inset: 0; z-index: 90; background: #000; color: #fff; overflow: hidden; text-align: center; font-family: Inter, system-ui, sans-serif; }
+#creditsRoll { position: absolute; left: 0; right: 0; top: 100%; padding: 0 16px; animation: roll 42s linear forwards; }
+#creditsRoll h1 { font-size: 2.6rem; letter-spacing: .12em; margin: 0 0 50px; color: #ff3b4a; }
+#creditsRoll h2 { font-size: 2rem; margin: 70px 0 120px; color: #ffd24d; }
+#creditsRoll .r { color: #9aa; font-size: .95rem; letter-spacing: .25em; text-transform: uppercase; margin: 38px 0 6px; }
+#creditsRoll .n { font-size: 1.9rem; font-weight: 800; margin: 0; }
+#creditsRoll .n.s { font-size: 1.15rem; font-weight: 600; margin: 4px 0; }
+@keyframes roll { to { transform: translateY(calc(-100% - 100vh)); } }
+#creditsClose { position: absolute; top: 14px; right: 14px; }

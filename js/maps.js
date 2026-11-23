@@ -772,7 +772,7 @@ export const MAP_DEFS = [
 // Mezcla trozos de todos los mapas, todo plano (paredes bajas) y sin techo.
 function genGlitch(def, rng) {
   const c = ctxNew(def, rng);
-  const pool = [...MAP_DEFS.filter(d => !d.glitch), GREEN_DEF, VERITY_DEF];
+  const pool = [...MAP_DEFS.filter(d => !d.glitch && d !== CHOCO_DEF && d !== GREEN_DEF && d !== VERITY_DEF), GREEN_DEF, VERITY_DEF]; // siempre el mismo grupo (también en cooperativo)
   const srcs = [];
   for (let k = 0; k < 7; k++) {
     const d = pool[Math.floor(rng() * pool.length)];

@@ -107,3 +107,6 @@ Menú → **👥 Cooperativo**: uno pulsa «Crear sala» y pasa el código; el o
 
 ## Armas del suelo con precio
 En partidas normales (sin cooperativo ni jefes) las armas del mapa muestran su precio en 🪙 sobre el arma y se cobran al recogerlas: revólver 15, subfusil 30, escopeta 35, granadas 60, francotirador 60, bazuca 100. La **primera arma de cada ronda es gratis**; las que sueltan los CPUs y las que compraste en la tienda también son gratis. Sin monedas suficientes no se recoge.
+
+## Final de ???
+Al derrotar el jefe final se desbloquea el mapa **Zona Glitch** (jugable en «Mapa y partida») y salen los **créditos** (Prompting: Ms63 · Coding: Claude · Creador de Claude: Anthropic · música y tecnología). Luego puedes verlos otra vez con el botón «🎬 Créditos» del menú.

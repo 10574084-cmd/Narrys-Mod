@@ -29,6 +29,7 @@ let chocoCache = null;
 if (unlocks.choco && !MAP_DEFS.includes(CHOCO_DEF)) MAP_DEFS.push(CHOCO_DEF); // mapa del jefe desbloqueado
 if (unlocks.exe && !MAP_DEFS.includes(GREEN_DEF)) MAP_DEFS.push(GREEN_DEF); // mapa de Sonic.exe desbloqueado
 if (unlocks.verity && !MAP_DEFS.includes(VERITY_DEF)) MAP_DEFS.push(VERITY_DEF); // casa de Verity desbloqueada
+if (unlocks.glitch && !MAP_DEFS.includes(GLITCH_DEF)) MAP_DEFS.push(GLITCH_DEF); // Zona Glitch desbloqueada (al terminar ???)
 if (cfg.map >= MAP_DEFS.length) cfg.map = 0;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* nada */ } };
 
@@ -271,6 +272,7 @@ function toMenu() {
 
 async function play() {
   if (guestBlock()) return;
+  clearTimeout(creditsTimer); show('credits', false);
   stopIntro();
   show('loading', true); $('loadText').textContent = 'Generando mapa…';
   game.sfx.init(MAP_DEFS[cfg.map].drone); // el clic cuenta como gesto para activar el audio
@@ -320,6 +322,21 @@ function unlockVerity() {
   renderMemes(); renderBossKeys();
   return true;
 }
+function unlockGlitch() {
+  if (unlocks.glitch) return false;
+  unlocks.glitch = true; saveUnl();
+  if (!MAP_DEFS.includes(GLITCH_DEF)) { MAP_DEFS.push(GLITCH_DEF); addMapCard(GLITCH_DEF, MAP_DEFS.length - 1); addMapChip(GLITCH_DEF, MAP_DEFS.length - 1); }
+  renderBossKeys();
+  return true;
+}
+function showCredits() {
+  const c = $('credits'), r = $('creditsRoll'); show('credits', true);
+  r.style.animation = 'none'; void r.offsetWidth; r.style.animation = '';
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+$('creditsClose').onclick = () => { show('credits', false); if (game.state !== 'menu') toMenu(); };
+$('btnCredits').onclick = showCredits;
+let creditsTimer = 0;
 let rushTimer = 0;
 function rushAdvance() {
   if (!rush || !game.bossDead || lastBoss === 'final') return false;
@@ -332,7 +349,7 @@ function rushAdvance() {
 const bossName = () => lastBoss === 'final' ? 'TODOS LOS JEFES' : lastBoss === 'exe' ? 'SONIC.EXE y sus amigos' : lastBoss === 'verity' ? 'VERITY' : 'ODIO EL CHOCOLATE';
 function bossReward() {
   if (!game.bossDead) return unlockMsg('');
-  if (lastBoss === 'final') { A.unlock('rush_final'); return unlockMsg('👾 ¡Completaste ???! Derrotaste a todos los jefes en la Zona Glitch.'); }
+  if (lastBoss === 'final') { A.unlock('rush_final'); const nw = unlockGlitch(); clearTimeout(creditsTimer); creditsTimer = setTimeout(showCredits, 6000); return unlockMsg('👾 ¡Completaste ???! Derrotaste a todos los jefes en la Zona Glitch.' + (nw ? ' 🔓 ¡Desbloqueaste el mapa ZONA GLITCH! Lo encuentras en «Mapa y partida».' : '')); }
   if (rush) { A.unlock(lastBoss === 'exe' ? 'boss_exe' : lastBoss === 'verity' ? 'boss_verity' : 'boss_choco'); return unlockMsg(''); }
   A.unlock(lastBoss === 'exe' ? 'boss_exe' : lastBoss === 'verity' ? 'boss_verity' : 'boss_choco');
   if (lastBoss === 'verity') return unlockMsg(unlockVerity() ? '🔓 ¡Desbloqueaste a VERITY como nextbot y el mapa Casa de Verity! Los encuentras en «Memes / nextbots» y en «Mapa y partida».' : '🔓 Ya tienes desbloqueados a Verity y su casa.');
@@ -404,6 +421,7 @@ async function chocoThumb(blob) {
 }
 async function playBoss(kind = 'choco', inRush = false) {
   if (guestBlock()) return;
+  clearTimeout(creditsTimer); show('credits', false);
   stopIntro();
   lastBoss = kind; rush = lastRush = inRush; clearTimeout(rushTimer); $('over').classList.remove('rushnext');
   const exe = kind === 'exe', ver = kind === 'verity', fin = kind === 'final', def = fin ? GLITCH_DEF : exe ? GREEN_DEF : ver ? VERITY_DEF : CHOCO_DEF;
@@ -534,6 +552,7 @@ function renderBossKeys() {
   }
   box.classList.toggle('hidden', !box.children.length);
   $('btnRush').classList.toggle('hidden', !(unlocks.choco && unlocks.exe && unlocks.verity));
+  $('btnCredits').classList.toggle('hidden', !unlocks.glitch);
 }
 renderBossKeys();
 $('btnRush').onclick = () => playBoss('choco', true);
