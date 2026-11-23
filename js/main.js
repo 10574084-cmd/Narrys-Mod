@@ -287,7 +287,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await hostStart({ skin: Shop.currentSkin(), bought: Shop.takeStock(), priced: !(coop && coop.friend), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -431,7 +431,7 @@ async function playBoss(kind = 'choco', inRush = false) {
   try {
     const plan = fin ? [await getChocoEntry(), ...(await getExeEntries()), await getVerityEntry()] : exe ? await getExeEntries() : ver ? [await getVerityEntry()] : [await getChocoEntry()];
     $('loadText').textContent = exe ? 'Plantando flores con ojos…' : 'Construyendo la arena…';
-    await hostStart({ skin: Shop.currentSkin(), bought: Shop.takeStock(), boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 55 CPUs' : undefined,
+    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), boss: true, bossKey: kind, music: fin ? 'assets/music/final-zone.mp3' : exe ? 'assets/music/exe-funk.mp3' : ver ? 'assets/music/verity-inst.mp3' : 'assets/music/choco-chase.mp3', vocal: ver ? 'assets/music/verity-vocal.mp3' : undefined, bossMsg: fin ? '👾 ¡BOSS FINAL! Derrota a TODOS los jefes con tus 150 CPUs' : exe ? '💀 ¡BOSS FIGHT! Derrota a SONIC.EXE, TAILS DOLL y KNUCKLES.EXE (5000 de vida cada uno) con tus 100 CPUs' : ver ? '🙂 ¡BOSS FIGHT! Derrota a VERITY en su casa con tus 55 CPUs' : undefined,
       perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, choco: { size: fin ? 7 : 9, hp: fin ? 80000 : 14000 }, def, map: 0, cpus: fin ? 150 : ver ? 55 : 100, intro: fin, allBazooka: fin, bossDelay: ver ? 12 : 0, armStrong: ver, bossRamp: ver ? 40 : 0, hpMul: fin ? 8 : 1, bots: plan.length, plan, diff: 1, size: fin ? 80 : ver ? 42 : 64, dur: 600,
       quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, plan);
   } catch (err) {
@@ -502,13 +502,12 @@ function renderShop() {
   }
   const wl = $('weaponList'); wl.innerHTML = '';
   for (const w of Shop.WEAPON_SHOP) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'shopItem' + (st.coins < w.price ? ' poor' : '');
-    b.innerHTML = `<span class="ic">${w.icon}</span>${w.name}${st.stock[w.type] ? ` ×${st.stock[w.type]}` : ''}<small>${w.price} 🪙</small>`;
-    b.onclick = () => { if (Shop.buyWeapon(w.type) === 'poor') alert('No tienes suficientes monedas.'); renderShop(); };
+    const own = st.weapons.includes(w.type), b = document.createElement('button'); b.type = 'button'; b.className = 'shopItem' + (own ? ' on' : st.coins < w.price ? ' poor' : '');
+    b.innerHTML = `<span class="ic">${w.icon}</span>${w.name}<small>${own ? '✔ Desbloqueada' : w.price + ' 🪙'}</small>`;
+    b.onclick = () => { if (own) return; if (Shop.buyWeapon(w.type) === 'poor') alert('No tienes suficientes monedas.'); renderShop(); };
     wl.appendChild(b);
   }
-  const n = Object.values(st.stock).reduce((a, b) => a + b, 0);
-  $('stockInfo').textContent = n ? `Tienes ${n} arma${n > 1 ? 's' : ''} comprada${n > 1 ? 's' : ''}: aparecerán en el suelo a tu lado al empezar la próxima partida.` : '';
+  $('stockInfo').textContent = st.weapons.length ? `Armas desbloqueadas: ${st.weapons.length}/${Shop.WEAPON_SHOP.length}. Solo esas aparecen en el suelo de las partidas.` : '🔒 Aún no tienes ningún arma: hasta que compres una aquí, no aparece ninguna en las partidas.';
 }
 $('btnShop').onclick = $('coinBtn').onclick = () => { renderShop(); go('scrShop'); };
 renderShop();
@@ -643,7 +642,7 @@ async function coopGuestStart(m) {
   try {
     const plan = await Promise.all(m.o.plan.map(entryById));
     lastBoss = m.o.lastBoss || false; rush = lastRush = false;
-    const o = { ...m.o, def, plan, skin: Shop.currentSkin(), bought: [], perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name, map: 0, coop: { role: 'guest' }, coopInit: m.init, intro: false };
+    const o = { ...m.o, def, plan, skin: Shop.currentSkin(), weapons: [], perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, quality: cfg.quality === 'rt' ? 'high' : cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name, map: 0, coop: { role: 'guest' }, coopInit: m.init, intro: false };
     await game.start(o, plan);
     game.net = coop.net;
   } catch (err) {

@@ -770,7 +770,7 @@ export class Game {
         this.pickups.push(this.makePickup(type, x, z, null, true)); k++; break;
       }
     }
-    this.toast(`🛒 ${list.length} arma${list.length > 1 ? 's' : ''} de la tienda en el suelo, a tu lado`, 3500);
+
   }
 
   // intro del jefe final: el jugador mira a los jefes "solo"; llegan los CPUs con bazucas y le regalan una
@@ -840,7 +840,9 @@ export class Game {
     const n = (t, c) => Array(Math.round(c)).fill(t);
     const list = this.opts.boss ? [...n('bazooka', 3), ...n('revolver', 8), ...n('smg', 6), ...n('shotgun', 8), ...n('sniper', 4), ...n('grenade', 4)]
       : ['bazooka', ...n('revolver', 10 * k), ...n('smg', 5 * k), ...n('shotgun', 8 * k), ...n('sniper', 3 * k), ...n('grenade', 3 * k)];
-    for (const type of list) {
+    const wl = this.opts.weapons; if (wl && !wl.length) setTimeout(() => this.toast('🔒 Aún no tienes armas: desbloquéalas comprándolas en 🛒 Tienda', 4500), 4000);
+    // solo aparecen las armas desbloqueadas en la tienda
+    for (const type of wl ? list.filter(t => wl.includes(t)) : list) {
       let spot = null;
       for (let t = 0; t < 80 && !spot; t++) {
         const c = W.cellWorld(pick());

@@ -17,8 +17,11 @@ export const WEAPON_SHOP = [
   { type: 'sniper', name: 'Francotirador', icon: '🎯', price: 150 },
   { type: 'bazooka', name: 'Bazuca', icon: '🚀', price: 250 },
 ];
-let S = { coins: 0, owned: ['default'], skin: 'default', stock: {} };
+let S = { coins: 0, owned: ['default'], skin: 'default', stock: {}, weapons: [] };
 try { const r = JSON.parse(localStorage.getItem(KEY) || 'null'); if (r) S = { ...S, ...r }; } catch { /* nada */ }
+// migración: lo que se compró antes como «stock» pasa a estar desbloqueado
+for (const t of Object.keys(S.stock || {})) if (!S.weapons.includes(t)) S.weapons.push(t);
+S.stock = {};
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* nada */ } };
 export const state = () => S;
 export const coins = () => S.coins;
@@ -29,19 +32,14 @@ export function buySkin(id) {
   if (S.coins < s.price) return 'poor';
   S.coins -= s.price; S.owned.push(id); S.skin = id; save(); return 'bought';
 }
+// comprar un arma la desbloquea para siempre: solo entonces aparece en las partidas
 export function buyWeapon(type) {
   const w = WEAPON_SHOP.find(x => x.type === type); if (!w) return 'no';
+  if (S.weapons.includes(type)) return 'owned';
   if (S.coins < w.price) return 'poor';
-  S.coins -= w.price; S.stock[type] = (S.stock[type] || 0) + 1; save(); return 'bought';
+  S.coins -= w.price; S.weapons.push(type); save(); return 'bought';
 }
+export const unlockedWeapons = () => S.weapons.slice();
 export const currentSkin = () => SKINS.find(s => s.id === S.skin) || SKINS[0];
-// lista de armas compradas para esta partida (y se vacía el inventario de la tienda)
-export function takeStock() {
-  const list = []; for (const [t, n] of Object.entries(S.stock)) for (let i = 0; i < n; i++) list.push(t);
-  S.stock = {}; save(); return list;
-}
-export function resetShop() { S = { coins: 0, owned: ['default'], skin: 'default', stock: {} }; save(); }
+export function resetShop() { S = { coins: 0, owned: ['default'], skin: 'default', stock: {}, weapons: [] }; save(); }
 
-// precio de las armas del suelo en partidas normales (la primera de cada ronda es gratis)
-export const FLOOR_PRICE = { revolver: 15, smg: 30, shotgun: 35, grenade: 60, sniper: 60, bazooka: 100 };
-export function spend(n) { if (S.coins < n) return false; S.coins -= n; save(); return true; }
