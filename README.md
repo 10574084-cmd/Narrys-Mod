@@ -128,3 +128,6 @@ Opciones → «📱 Controles táctiles»: tamaño del joystick y de los botones
 
 ## Código «ended?»
 Escribir `ended?` en «Códigos secretos» muestra el texto **UPDATECOMINSOON** a pantalla completa y te manda al menú principal.
+
+## Música de las partidas normales
+En las partidas normales suena `assets/music/round-chase.mp3` en bucle (volumen = el de Opciones). Se puede apagar en Opciones → «Música de fondo en las partidas normales». Los jefes siguen con su propia música.

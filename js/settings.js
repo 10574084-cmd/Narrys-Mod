@@ -8,7 +8,7 @@ export const ACTIONS = [
   ['light', 'Linterna'], ['revive', 'Revivir (mantener)'], ['board', 'Lista de jugadores'], ['slot1', 'Arma 1'], ['slot2', 'Arma 2'], ['slot3', 'Arma 3'], ['slot4', 'Arma 4'], ['slot5', 'Arma 5'], ['slot6', 'Arma 6'],
 ];
 export const DEFAULT_PERF = { scale: 100, shadows: 'on', lights: 'norm', dist: 0, fps: 0, auto: false, showFps: false };
-export const DEFAULT_EXTRA = { volume: 70, bob: true, invert: false, minimap: true, feed: true, names: true, runToggle: false, aimToggle: false, mouse: 'left', crossColor: '#ffffff', crossSize: 100 };
+export const DEFAULT_EXTRA = { volume: 70, bob: true, invert: false, minimap: true, feed: true, names: true, runToggle: false, aimToggle: false, music: true, mouse: 'left', crossColor: '#ffffff', crossSize: 100 };
 
 export const DEFAULT_TOUCH = { joy: 100, btn: 100, opacity: 100, sens: 100, lefty: false, noLight: false, noJump: false };
 

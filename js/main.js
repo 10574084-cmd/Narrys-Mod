@@ -102,7 +102,7 @@ const OPTS = [ // [id, objeto, clave, tipo, etiqueta de valor, formato]
   ['pDist', cfg.perf, 'dist', 'num'], ['pDist2', cfg.perf, 'dist', 'num'], ['pFps', cfg.perf, 'fps', 'num'], ['pAuto', cfg.perf, 'auto', 'chk'], ['pShowFps', cfg.perf, 'showFps', 'chk'],
   ['pVol', cfg.extra, 'volume', 'num', 'vVol', v => v + '%'], ['pBob', cfg.extra, 'bob', 'chk'], ['pInv', cfg.extra, 'invert', 'chk'],
   ['pMini', cfg.extra, 'minimap', 'chk'], ['pFeed', cfg.extra, 'feed', 'chk'], ['pNames', cfg.extra, 'names', 'chk'],
-  ['pRunT', cfg.extra, 'runToggle', 'chk'], ['pAimT', cfg.extra, 'aimToggle', 'chk'], ['pMouse', cfg.extra, 'mouse', 'str'],
+  ['pRunT', cfg.extra, 'runToggle', 'chk'], ['pAimT', cfg.extra, 'aimToggle', 'chk'], ['pMusic', cfg.extra, 'music', 'chk'], ['pMouse', cfg.extra, 'mouse', 'str'],
   ['pTjoy', cfg.touch, 'joy', 'num', 'vTjoy', v => v + '%'], ['pTbtn', cfg.touch, 'btn', 'num', 'vTbtn', v => v + '%'], ['pTop', cfg.touch, 'opacity', 'num', 'vTop', v => v + '%'], ['pTsens', cfg.touch, 'sens', 'num', 'vTsens', v => (v / 100).toFixed(1) + '×'],
   ['pTlefty', cfg.touch, 'lefty', 'chk'], ['pTlight', cfg.touch, 'noLight', 'chk'], ['pTjump', cfg.touch, 'noJump', 'chk'],
   ['pCrossC', cfg.extra, 'crossColor', 'str'], ['pCrossS', cfg.extra, 'crossSize', 'num', 'vCrossS', v => v + '%'],
@@ -298,7 +298,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), map: cfg.map, cpus: cfg.size >= 200 ? Math.min(cfg.cpus, 30) : cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), music: cfg.extra.music ? 'assets/music/round-chase.mp3' : undefined, map: cfg.map, cpus: cfg.size >= 200 ? Math.min(cfg.cpus, 30) : cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
