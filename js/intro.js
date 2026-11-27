@@ -14,6 +14,7 @@ let audio = null, root = null, raf = 0, active = false, done = null, t0 = 0;
 export const introActive = () => active;
 
 export function stopIntro() {
+  const sk = document.getElementById('introSkip'); if (sk) sk.classList.add('hidden');
   if (audio) { try { audio.pause(); } catch { /* nada */ } audio = null; }
   if (root) { root.remove(); root = null; }
   cancelAnimationFrame(raf); active = false;
@@ -40,6 +41,8 @@ export function runIntro(onDone) {
   done = onDone;
   root = document.getElementById('intro');
   if (!root) { onDone && onDone(); return; }
+  const skipBtn = document.getElementById('introSkip');
+  if (skipBtn) skipBtn.onclick = () => { if (!active) return; stopIntro(); if (done) done(); }; // salta directo al menú
   active = true;
   const [t1, t2] = randomTips(2);
   LINES[3][4] = t1; LINES[4][4] = t2;           // tips distintos en cada visita
@@ -59,6 +62,7 @@ export function runIntro(onDone) {
   const tick = () => {
     const t = audio && !audio.paused ? audio.currentTime : clock();
     if (t >= DROP) { finish(); return; }
+    const sk = document.getElementById('introSkip'); if (sk) sk.classList.toggle('hidden', t < LINES[3][0]); // el botón aparece cuando empiezan los tips
     let idx = -1;
     for (let i = 0; i < LINES.length; i++) if (t >= LINES[i][0] && t < LINES[i][1]) idx = i;
     if (idx !== shown) render(idx);

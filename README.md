@@ -110,3 +110,12 @@ Al derrotar el jefe final se desbloquea el mapa **Zona Glitch** (jugable en «Ma
 
 ## Tutorial para nuevos
 La primera vez que llegas al menú principal (justo después de la intro) aparece un tutorial de 6 pasos (objetivo, controles, armas y tienda, monedas y logros, secretos, cooperativo). Se puede saltar y no vuelve a salir (`narrysmod_tut_v1`). Puedes verlo otra vez con el botón «❓ Tutorial» del menú.
+
+## Saltar intro
+Cuando la intro llega a la zona de tips aparece el botón «Saltar intro ⏭» (abajo a la derecha) y te lleva directo al menú.
+
+## Mapa ♾️ Infinito (por chunks) y distancia de render
+«Tamaño del mapa → ♾️ Infinito» genera un mapa gigante (256×256 celdas ≈ 640 m) y los muros/objetos se construyen **por chunks** de 12×12 celdas: solo se crean y dibujan los cercanos a ti (los lejanos se ocultan y, muy lejos, se descargan). Con este tamaño los CPUs se limitan a 30. Junto al tamaño hay un selector de **Distancia de render** (Automática según tu equipo, Muy corta … Muy larga, Sin límite); también está en Opciones → Rendimiento. Sin límite en un mapa infinito se usa 170 m.
+
+## Controles táctiles configurables
+Opciones → «📱 Controles táctiles»: tamaño del joystick y de los botones, opacidad, sensibilidad al mirar, modo zurdo, ocultar linterna y saltar, y botón para restablecer.

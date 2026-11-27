@@ -145,6 +145,9 @@ function matcapTex() {
   _matcap = new THREE.CanvasTexture(c); _matcap.colorSpace = THREE.SRGBColorSpace; return _matcap;
 }
 
+// distancia de dibujado automática según el equipo
+function autoDist() { const c = navigator.hardwareConcurrency || 4; return isTouch ? 70 : c <= 4 ? 90 : c <= 8 ? 130 : 190; }
+
 export class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -204,11 +207,12 @@ export class Game {
     const joy = $('joy'), knob = $('knob');
     let jid = null, jc = null;
     const jmove = e => {
-      const dx = clamp(e.clientX - jc.x, -50, 50), dy = clamp(e.clientY - jc.y, -50, 50);
-      this.joy.x = dx / 50; this.joy.y = dy / 50;
-      knob.style.transform = `translate(${dx}px,${dy}px)`;
+      const k = jc.k || 1, R = 50 * k; // el joystick puede estar escalado desde Opciones
+      const dx = clamp(e.clientX - jc.x, -R, R), dy = clamp(e.clientY - jc.y, -R, R);
+      this.joy.x = dx / R; this.joy.y = dy / R;
+      knob.style.transform = `translate(${dx / k}px,${dy / k}px)`;
     };
-    joy.addEventListener('pointerdown', e => { jid = e.pointerId; joy.setPointerCapture(jid); const r = joy.getBoundingClientRect(); jc = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; jmove(e); });
+    joy.addEventListener('pointerdown', e => { jid = e.pointerId; joy.setPointerCapture(jid); const r = joy.getBoundingClientRect(); jc = { x: r.left + r.width / 2, y: r.top + r.height / 2, k: r.width / 130 }; jmove(e); });
     joy.addEventListener('pointermove', e => { if (e.pointerId === jid) jmove(e); });
     const jend = e => { if (e.pointerId !== jid) return; jid = null; this.joy.x = this.joy.y = 0; knob.style.transform = ''; };
     joy.addEventListener('pointerup', jend); joy.addEventListener('pointercancel', jend);
@@ -216,7 +220,7 @@ export class Game {
     this.canvas.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || lid !== null) return; lid = e.pointerId; lx = e.clientX; ly = e.clientY; });
     this.canvas.addEventListener('pointermove', e => {
       if (e.pointerId !== lid) return;
-      this.yaw -= (e.clientX - lx) * this.sens * 1.6; this.pitch = clamp(this.pitch + (this.extra.invert ? 1 : -1) * (e.clientY - ly) * this.sens * 1.6, -1.45, 1.45);
+      const ts = this.touchSens || 1; this.yaw -= (e.clientX - lx) * this.sens * 1.6 * ts; this.pitch = clamp(this.pitch + (this.extra.invert ? 1 : -1) * (e.clientY - ly) * this.sens * 1.6 * ts, -1.45, 1.45);
       lx = e.clientX; ly = e.clientY;
     });
     const lend = e => { if (e.pointerId === lid) lid = null; };
@@ -273,7 +277,7 @@ export class Game {
     this.kb = { ...DEFAULT_KEYS, ...(opts.keys || {}) }; this.runLatch = false;
     if (P.shadows === 'off') { q.shadows = false; q.cpuShadows = false; }
     if (P.lights === 'few') { q.lamps = Math.min(q.lamps, 1); q.botLights = Math.min(q.botLights, 1); }
-    this.fpsCap = +P.fps || 0; this.dist = +P.dist || 0; this.autoRes = !!P.auto; this._fAcc = 0; this._fN = 0;
+    this.fpsCap = +P.fps || 0; this.dist = +P.dist < 0 ? autoDist() : (+P.dist || 0); this.autoRes = !!P.auto; this._fAcc = 0; this._fN = 0;
     this.baseDpr = Math.min(window.devicePixelRatio || 1, q.dpr); this.curScale = clamp(P.scale / 100, 0.4, 1);
     document.body.classList.toggle('noMini', !X.minimap); document.body.classList.toggle('noFeed', !X.feed);
     $('fpsBox').classList.toggle('hidden', !P.showFps);
@@ -298,6 +302,7 @@ export class Game {
     await this.setupPost();
     await this.buildMemes(opts.plan);
     this.intro = null; this.tele = []; this.darkT = 0; this._dark = null; this.spawnEntities();
+    this.camera.position.set(this.player.x, 1.65, this.player.z); this.updateChunks(true);
     this.buildMini();
     this.sfx.init(def.drone);
     this.freePick = true; this.chocoUsed = false; this.bossDead = false; this.time = 0; this.round = opts.dur; this.endShown = false; this.kills = 0; this.specIdx = 0;
@@ -375,21 +380,28 @@ export class Game {
       });
     }
 
-    // paredes (instanciadas, agrupadas por altura)
+    // paredes y objetos repartidos en chunks (trozos de CH×CH celdas): solo se construyen y dibujan los cercanos
     const wt = TEX[def.tex.wall[0]](...def.tex.wall.slice(1));
-    const groups = new Map();
+    const CH = 12, dummy = new THREE.Object3D(), col = new THREE.Color();
+    this.CH = CH; this.chunkMap = new Map();
+    const getChunk = (cx, cz) => {
+      const k = cz * 1000 + cx; let c = this.chunkMap.get(k);
+      if (!c) { c = { cx, cz, x: (cx + 0.5) * CH * CELL, z: (cz + 0.5) * CH * CELL, walls: new Map(), props: new Map(), group: null, built: false }; this.chunkMap.set(k, c); }
+      return c;
+    };
     for (let i = 0; i < N * N; i++) {
       if (map.grid[i] !== 1) continue;
       const x = i % N, z = (i / N) | 0;
       const solid = (a, b) => a < 0 || b < 0 || a >= N || b >= N || map.grid[b * N + a] === 1;
       if (solid(x + 1, z) && solid(x - 1, z) && solid(x, z + 1) && solid(x, z - 1)) continue;
       const key = Math.round(map.hgt[i] * 10) + (map.texs && map.texs[i] >= 0 ? ':' + map.texs[i] : '');
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(i);
+      const ch = getChunk((x / CH) | 0, (z / CH) | 0);
+      if (!ch.walls.has(key)) ch.walls.set(key, []);
+      ch.walls.get(key).push(i);
     }
-    const dummy = new THREE.Object3D(), col = new THREE.Color();
-    const wtCache = new Map();
-    for (const [key, list] of groups) {
+    const wtCache = new Map(), wallStuff = new Map();
+    const wallFor = key => { // material y geometría compartidos por todos los chunks
+      let st = wallStuff.get(key); if (st) return st;
       const [hs, ts] = String(key).split(':'), h = +hs / 10;
       let wt0 = wt, indoor0 = def.indoor;
       if (ts !== undefined) { const sd = map.srcDefs[+ts]; wt0 = wtCache.get(ts) || TEX[sd.tex.wall[0]](...sd.tex.wall.slice(1)); wtCache.set(ts, wt0); indoor0 = sd.indoor; }
@@ -400,43 +412,49 @@ export class Game {
         const e = wt0.userData.emissive.clone(); e.needsUpdate = true; e.repeat.copy(t.repeat);
         m.emissiveMap = e; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 1.3;
       }
-      const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL, h, CELL), m, list.length);
-      list.forEach((i, k) => {
-        dummy.position.set(((i % N) + 0.5) * CELL, h / 2, (((i / N) | 0) + 0.5) * CELL);
-        dummy.updateMatrix(); inst.setMatrixAt(k, dummy.matrix);
-        const v = 0.82 + Math.random() * 0.18; inst.setColorAt(k, col.setRGB(v, v, v));
-      });
-      inst.castShadow = q.shadows; inst.receiveShadow = true;
-      scene.add(inst);
-    }
+      st = { h, m, geo: new THREE.BoxGeometry(CELL, h, CELL) }; wallStuff.set(key, st); return st;
+    };
 
     // objetos (cajas, árboles, coches, lámparas…) agrupados por forma
     const GEOS = {
       box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
       cone: new THREE.ConeGeometry(0.5, 1, 10), sphere: new THREE.SphereGeometry(0.5, 14, 10),
     };
-    const buckets = new Map();
     for (const p of map.props) {
-      const cs = Math.cos(p.rot), sn = Math.sin(p.rot);
+      const cs = Math.cos(p.rot), sn = Math.sin(p.rot), ch = getChunk(Math.min(N - 1, Math.max(0, (p.x / CELL) | 0)) / CH | 0, Math.min(N - 1, Math.max(0, (p.z / CELL) | 0)) / CH | 0);
       for (const pt of p.parts) {
         const key = pt.s + (pt.e ? 'E' : '');
-        if (!buckets.has(key)) buckets.set(key, []);
-        buckets.get(key).push({ p, pt, cs, sn });
+        if (!ch.props.has(key)) ch.props.set(key, []);
+        ch.props.get(key).push({ p, pt, cs, sn });
       }
     }
+    const propMats = new Map();
     const q4 = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), pos = new THREE.Vector3(), mtx = new THREE.Matrix4();
-    for (const [key, items] of buckets) {
-      const emi = key.endsWith('E'), shape = emi ? key.slice(0, -1) : key;
-      const mat = emi ? new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true }) : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
-      const inst = new THREE.InstancedMesh(GEOS[shape], mat, items.length);
-      items.forEach(({ p, pt, cs, sn }, k) => {
-        pos.set(p.x + pt.dx * cs + pt.dz * sn, pt.dy, p.z - pt.dx * sn + pt.dz * cs);
-        q4.setFromAxisAngle(up, p.rot); sc.set(pt.sx, pt.sy, pt.sz);
-        mtx.compose(pos, q4, sc); inst.setMatrixAt(k, mtx); inst.setColorAt(k, col.setHex(pt.c));
-      });
-      inst.castShadow = !emi && q.shadows; inst.receiveShadow = !emi;
-      scene.add(inst);
-    }
+    this.buildChunk = ch => {
+      const g = new THREE.Group();
+      for (const [key, list] of ch.walls) {
+        const st = wallFor(key), inst = new THREE.InstancedMesh(st.geo, st.m, list.length);
+        list.forEach((i, k) => {
+          dummy.position.set(((i % N) + 0.5) * CELL, st.h / 2, (((i / N) | 0) + 0.5) * CELL);
+          dummy.updateMatrix(); inst.setMatrixAt(k, dummy.matrix);
+          const v = 0.82 + Math.random() * 0.18; inst.setColorAt(k, col.setRGB(v, v, v));
+        });
+        inst.castShadow = q.shadows; inst.receiveShadow = true; g.add(inst);
+      }
+      for (const [key, items] of ch.props) {
+        const emi = key.endsWith('E'), shape = emi ? key.slice(0, -1) : key;
+        let mat = propMats.get(key); if (!mat) { mat = emi ? new THREE.MeshBasicMaterial({ color: 0xffffff, fog: true }) : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }); propMats.set(key, mat); }
+        const inst = new THREE.InstancedMesh(GEOS[shape], mat, items.length);
+        items.forEach(({ p, pt, cs, sn }, k) => {
+          pos.set(p.x + pt.dx * cs + pt.dz * sn, pt.dy, p.z - pt.dx * sn + pt.dz * cs);
+          q4.setFromAxisAngle(up, p.rot); sc.set(pt.sx, pt.sy, pt.sz);
+          mtx.compose(pos, q4, sc); inst.setMatrixAt(k, mtx); inst.setColorAt(k, col.setHex(pt.c));
+        });
+        inst.castShadow = !emi && q.shadows; inst.receiveShadow = !emi; g.add(inst);
+      }
+      scene.add(g); ch.group = g; ch.built = true;
+    };
+    this.chunkR = this.dist > 0 ? this.dist + 25 : (N > 100 ? 170 : Infinity); // distancia de dibujado (m)
 
     // animales muertos (sprites del mapa Green Hills .EXE): los de pie miran siempre a la cámara, los caídos van en el suelo
     if (map.sprites && map.sprites.length) {
@@ -759,6 +777,18 @@ export class Game {
     this.updateVisuals(dt); this.updateHud(); this.coopSendPos(dt);
   }
 
+  // construye/oculta chunks según la distancia a la cámara (force: construye todos los cercanos de golpe)
+  updateChunks(force = false) {
+    if (!this.chunkMap) return;
+    const c = this.camera.position, R = this.chunkR, half = this.CH * CELL * 0.72; let budget = force ? 1e9 : 3;
+    for (const ch of this.chunkMap.values()) {
+      const d = Math.hypot(ch.x - c.x, ch.z - c.z) - half, vis = d < R;
+      if (vis && !ch.built && budget > 0) { this.buildChunk(ch); budget--; }
+      else if (!vis && ch.built && d > R * 1.8) { ch.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); this.scene.remove(ch.group); ch.group = null; ch.built = false; } // lejísimos: se descarga
+      if (ch.group) ch.group.visible = vis;
+    }
+  }
+
   // armas compradas en la tienda: aparecen en el suelo alrededor del jugador
   placeBought() {
     const list = this.opts.bought || []; if (!list.length) return;
@@ -836,7 +866,7 @@ export class Game {
     const W = this.world;
     this.weapon = null; this.pickups = []; this.fx = []; this.inv = [null, null, null, null, null, null]; this.sel = -1; this.emptyT = undefined; this._hbSig = '';
     this.reviveT = 0; this.reviveTarget = null; this.reviveBtn = false;
-    const k = (N / 48) ** 2; // más mapa = más armas
+    const k = Math.min(6, (N / 48) ** 2); // más mapa = más armas (con tope)
     const n = (t, c) => Array(Math.round(c)).fill(t);
     const list = this.opts.boss ? [...n('bazooka', 3), ...n('revolver', 8), ...n('smg', 6), ...n('shotgun', 8), ...n('sniper', 4), ...n('grenade', 4)]
       : ['bazooka', ...n('revolver', 10 * k), ...n('smg', 5 * k), ...n('shotgun', 8 * k), ...n('sniper', 3 * k), ...n('grenade', 3 * k)];
@@ -1152,6 +1182,7 @@ export class Game {
         if (this.floorTex) this.floorTex.offset.set(Math.random(), Math.random());
       }
     }
+    this.chunkT = (this.chunkT || 0) - dt; if (this.chunkT <= 0 && this.scene) { this.chunkT = 0.25; this.updateChunks(); }
     if (this.rainbowMats && this.rainbowMats.length) { const h = (this.time * 0.35) % 1; for (const m of this.rainbowMats) m.color.setHSL(h, 0.9, 0.55); }
     if (this.guest) { this.updateGuest(dt); return; }
     if (this.tele && this.tele.length) this.updateTele(dt);

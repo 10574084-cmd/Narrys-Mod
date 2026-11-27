@@ -2,7 +2,7 @@
 import { MAP_DEFS, CHOCO_DEF, GREEN_DEF, VERITY_DEF, GLITCH_DEF, generateMap, N, setMapSize } from './maps.js';
 import { Game, isTouch } from './game.js';
 import { TitleScene } from './title.js';
-import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, ACTIONS, keyLabel } from './settings.js';
+import { DEFAULT_KEYS, DEFAULT_PERF, DEFAULT_EXTRA, DEFAULT_TOUCH, ACTIONS, keyLabel } from './settings.js';
 import * as A from './achievements.js';
 import * as Shop from './shop.js';
 import { Net } from './net.js';
@@ -22,6 +22,7 @@ cfg.choco = Object.assign({ size: 9, hp: 14000 }, cfg.choco || {});
 cfg.perf = Object.assign({}, DEFAULT_PERF, cfg.perf || {});
 cfg.extra = Object.assign({}, DEFAULT_EXTRA, cfg.extra || {});
 cfg.keys = Object.assign({}, DEFAULT_KEYS, cfg.keys || {});
+cfg.touch = Object.assign({}, DEFAULT_TOUCH, cfg.touch || {});
 const UKEY = 'narrysmod_unlocks_v1';
 const unlocks = (() => { try { return JSON.parse(localStorage.getItem(UKEY) || '{}'); } catch { return {}; } })();
 const saveUnl = () => { try { localStorage.setItem(UKEY, JSON.stringify(unlocks)); } catch { /* nada */ } };
@@ -84,7 +85,7 @@ bindRange('pCpus', 'cpus', 'vCpus'); bindRange('pBots', 'bots', 'vBots');
 bindRange('pFov', 'fov', 'vFov', v => v + '°'); bindRange('pSens', 'sens', 'vSens', v => (v / 10).toFixed(1) + '×');
 $('pName').value = cfg.name; $('pName').oninput = e => { cfg.name = e.target.value.trim().slice(0, 16) || 'Jugador'; save(); };
 for (const [id, key, num] of [['pSize', 'size', true], ['pDiff', 'diff', true], ['pDur', 'dur', true], ['pQual', 'quality', false]]) {
-  const el = $(id); el.value = cfg[key]; el.onchange = () => { cfg[key] = num ? +el.value : el.value; save(); updHint(); updSummary(); };
+  const el = $(id); el.value = cfg[key]; el.onchange = () => { cfg[key] = num ? +el.value : el.value; save(); updHint(); updSummary(); }; 
 }
 function updAI() {
   const b = $('btnAI'); b.textContent = `🤖 Nextbots de IA: ${cfg.ai ? 'SÍ' : 'NO'}`; b.classList.toggle('ghost', !cfg.ai); b.setAttribute('aria-pressed', cfg.ai);
@@ -92,16 +93,18 @@ function updAI() {
 }
 $('btnAI').onclick = () => { cfg.ai = !cfg.ai; save(); updAI(); renderMemes(); };
 updAI();
-function updHint() { $('rtHint').style.display = cfg.quality === 'rt' ? 'block' : 'none'; }
+function updHint() { $('rtHint').style.display = cfg.quality === 'rt' ? 'block' : 'none'; $('infHint').style.display = cfg.size >= 200 ? 'block' : 'none'; }
 updHint();
 
 /* ---------- rendimiento, extras y controles ---------- */
 const OPTS = [ // [id, objeto, clave, tipo, etiqueta de valor, formato]
   ['pScale', cfg.perf, 'scale', 'num', 'vScale', v => v + '%'], ['pShadows', cfg.perf, 'shadows', 'str'], ['pLights', cfg.perf, 'lights', 'str'],
-  ['pDist', cfg.perf, 'dist', 'num'], ['pFps', cfg.perf, 'fps', 'num'], ['pAuto', cfg.perf, 'auto', 'chk'], ['pShowFps', cfg.perf, 'showFps', 'chk'],
+  ['pDist', cfg.perf, 'dist', 'num'], ['pDist2', cfg.perf, 'dist', 'num'], ['pFps', cfg.perf, 'fps', 'num'], ['pAuto', cfg.perf, 'auto', 'chk'], ['pShowFps', cfg.perf, 'showFps', 'chk'],
   ['pVol', cfg.extra, 'volume', 'num', 'vVol', v => v + '%'], ['pBob', cfg.extra, 'bob', 'chk'], ['pInv', cfg.extra, 'invert', 'chk'],
   ['pMini', cfg.extra, 'minimap', 'chk'], ['pFeed', cfg.extra, 'feed', 'chk'], ['pNames', cfg.extra, 'names', 'chk'],
   ['pRunT', cfg.extra, 'runToggle', 'chk'], ['pAimT', cfg.extra, 'aimToggle', 'chk'], ['pMouse', cfg.extra, 'mouse', 'str'],
+  ['pTjoy', cfg.touch, 'joy', 'num', 'vTjoy', v => v + '%'], ['pTbtn', cfg.touch, 'btn', 'num', 'vTbtn', v => v + '%'], ['pTop', cfg.touch, 'opacity', 'num', 'vTop', v => v + '%'], ['pTsens', cfg.touch, 'sens', 'num', 'vTsens', v => (v / 100).toFixed(1) + '×'],
+  ['pTlefty', cfg.touch, 'lefty', 'chk'], ['pTlight', cfg.touch, 'noLight', 'chk'], ['pTjump', cfg.touch, 'noJump', 'chk'],
   ['pCrossC', cfg.extra, 'crossColor', 'str'], ['pCrossS', cfg.extra, 'crossSize', 'num', 'vCrossS', v => v + '%'],
 ];
 function refreshOpts() {
@@ -112,8 +115,15 @@ function refreshOpts() {
 }
 for (const [id, obj, key, kind, out, f] of OPTS) {
   const el = $(id), ev = kind === 'chk' || el.tagName === 'SELECT' ? 'onchange' : 'oninput';
-  el[ev] = () => { obj[key] = kind === 'chk' ? el.checked : kind === 'num' ? +el.value : el.value; if (out) $(out).textContent = f(obj[key]); save(); };
+  el[ev] = () => { obj[key] = kind === 'chk' ? el.checked : kind === 'num' ? +el.value : el.value; if (out) $(out).textContent = f(obj[key]); save(); if (id === 'pDist' || id === 'pDist2') refreshOpts(); if (obj === cfg.touch) applyTouch(); };
 }
+function applyTouch() {
+  const t = cfg.touch, st = document.documentElement.style;
+  st.setProperty('--tjs', (t.joy / 100).toFixed(2)); st.setProperty('--tbs', (t.btn / 100).toFixed(2)); st.setProperty('--top', (t.opacity / 100).toFixed(2));
+  document.body.classList.toggle('lefty', !!t.lefty); document.body.classList.toggle('noLight', !!t.noLight); document.body.classList.toggle('noJump', !!t.noJump);
+  game.touchSens = t.sens / 100;
+}
+$('pTreset').onclick = () => { Object.assign(cfg.touch, DEFAULT_TOUCH); save(); refreshOpts(); applyTouch(); };
 refreshOpts();
 
 function syncGameInputs() { // vuelve a mostrar en el menú valores que el botón de rendimiento pudo cambiar
@@ -261,6 +271,7 @@ selectMap(cfg.map);
 
 /* ---------- juego ---------- */
 const game = new Game($('c'));
+applyTouch();
 const show = (id, on) => $(id).classList.toggle('hidden', !on);
 
 function toMenu() {
@@ -287,7 +298,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), map: cfg.map, cpus: cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), map: cfg.map, cpus: cfg.size >= 200 ? Math.min(cfg.cpus, 30) : cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -468,7 +479,7 @@ function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.
 document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });
 function updSummary() {
   const q = { low: 'Bajo', med: 'Medio', high: 'Alto', rt: 'Raytracing' }[cfg.quality];
-  $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
+  $('summary').textContent = `${MAP_DEFS[cfg.map].name} · ${{48:'Normal',64:'Grande',80:'Enorme',256:'♾️ Infinito'}[cfg.size] || 'Normal'} · ${cfg.cpus} CPUs · ${cfg.bots} nextbots · ${q}`;
 }
 updSummary();
 $('retry').onclick = () => { if (guestBlock()) return; show('over', false); $('over').classList.remove('troll'); lastBoss ? playBoss(lastBoss, lastRush) : play(); };

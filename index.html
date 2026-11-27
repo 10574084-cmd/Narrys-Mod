@@ -24,6 +24,7 @@
   <div id="intro">
     <div class="stage"></div>
     <div class="flash"></div>
+    <button id="introSkip" class="hidden" type="button">Saltar intro ⏭</button>
   </div>
 
   <!-- MENÚ PRINCIPAL -->
@@ -102,9 +103,15 @@
           <label>Nextbots <b id="vBots"></b><input id="pBots" type="range" min="1" max="20" value="3"></label>
           <label>Tamaño del mapa
             <select id="pSize">
-              <option value="48" selected>Normal</option><option value="64">Grande</option><option value="80">Enorme</option>
+              <option value="48" selected>Normal</option><option value="64">Grande</option><option value="80">Enorme</option><option value="256">♾️ Infinito (por chunks)</option>
             </select>
           </label>
+          <label>Distancia de render <span class="hint" style="display:inline">(según tu equipo)</span>
+            <select id="pDist2">
+              <option value="-1">Automática</option><option value="40">Muy corta (PC/celular lento)</option><option value="70">Corta</option><option value="110">Media</option><option value="160">Larga</option><option value="240">Muy larga (PC potente)</option><option value="0">Sin límite (puede ir lento)</option>
+            </select>
+          </label>
+          <p class="hint" id="infHint" style="display:none">♾️ El mapa es enorme (unos 640 m) y se carga por chunks: solo se construye y dibuja lo que está cerca de ti. Con este tamaño se limitan los CPUs a 30.</p>
           <label>Dificultad
             <select id="pDiff">
               <option value="0">Fácil</option><option value="1" selected>Normal</option>
@@ -150,7 +157,7 @@
             <select id="pLights"><option value="norm">Normales</option><option value="few">Pocas (más FPS)</option></select>
           </label>
           <label>Distancia de dibujado
-            <select id="pDist"><option value="0">Ilimitada</option><option value="110">Larga</option><option value="70">Media</option><option value="40">Corta (más FPS)</option></select>
+            <select id="pDist"><option value="-1">Automática</option><option value="240">Muy larga</option><option value="160">Larga</option><option value="0">Ilimitada</option><option value="110">Larga</option><option value="70">Media</option><option value="40">Corta (más FPS)</option></select>
           </label>
           <label>Límite de FPS
             <select id="pFps"><option value="0">Sin límite</option><option value="60">60</option><option value="30">30 (ahorra batería)</option></select>
@@ -162,6 +169,15 @@
         <section class="panel">
           <h2>Extras</h2>
           <label>Volumen <b id="vVol"></b><input id="pVol" type="range" min="0" max="100" step="5"></label>
+          <h3>📱 Controles táctiles <span class="hint" style="display:inline">(para celular/tablet)</span></h3>
+          <label>Tamaño del joystick <b id="vTjoy"></b><input id="pTjoy" type="range" min="60" max="170" step="5"></label>
+          <label>Tamaño de los botones <b id="vTbtn"></b><input id="pTbtn" type="range" min="60" max="170" step="5"></label>
+          <label>Opacidad de los controles <b id="vTop"></b><input id="pTop" type="range" min="25" max="100" step="5"></label>
+          <label>Sensibilidad al mirar (arrastrar) <b id="vTsens"></b><input id="pTsens" type="range" min="30" max="250" step="10"></label>
+          <label class="check"><input id="pTlefty" type="checkbox"> Modo zurdo (joystick a la derecha, botones a la izquierda)</label>
+          <label class="check"><input id="pTlight" type="checkbox"> Ocultar el botón de linterna 🔦</label>
+          <label class="check"><input id="pTjump" type="checkbox"> Ocultar el botón de saltar</label>
+          <button id="pTreset" class="btn small ghost" type="button">Restablecer controles táctiles</button>
           <label class="check"><input id="pBob" type="checkbox"> Balanceo de cámara al caminar</label>
           <label class="check"><input id="pInv" type="checkbox"> Invertir eje vertical del ratón</label>
           <label class="check"><input id="pMini" type="checkbox"> Mostrar minimapa</label>

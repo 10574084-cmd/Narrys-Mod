@@ -10,6 +10,8 @@ export const ACTIONS = [
 export const DEFAULT_PERF = { scale: 100, shadows: 'on', lights: 'norm', dist: 0, fps: 0, auto: false, showFps: false };
 export const DEFAULT_EXTRA = { volume: 70, bob: true, invert: false, minimap: true, feed: true, names: true, runToggle: false, aimToggle: false, mouse: 'left', crossColor: '#ffffff', crossSize: 100 };
 
+export const DEFAULT_TOUCH = { joy: 100, btn: 100, opacity: 100, sens: 100, lefty: false, noLight: false, noJump: false };
+
 const NAMES = { Space: 'Espacio', ShiftLeft: 'Shift', ShiftRight: 'Shift der.', ControlLeft: 'Ctrl', ControlRight: 'Ctrl der.', AltLeft: 'Alt', AltRight: 'Alt der.',
   Tab: 'Tab', Enter: 'Enter', Backspace: '←Borrar', CapsLock: 'Bloq Mayús', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Backquote: '`', Minus: '-', Equal: '=',
   BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', Backslash: '\\' };
