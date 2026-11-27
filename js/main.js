@@ -455,12 +455,18 @@ async function playBoss(kind = 'choco', inRush = false) {
   show('menu', false); show('loading', false); show('over', false); show('hud', true); show('pause', false);
   game.lock();
 }
+function showSoon() { // código «ended?»: aviso y vuelta al menú principal
+  show('soon', true);
+  clearTimeout(showSoon.t); showSoon.t = setTimeout(() => { show('soon', false); go('scrMain'); }, 3500);
+}
+$('soon').onclick = () => { clearTimeout(showSoon.t); show('soon', false); go('scrMain'); };
 function tryCode() {
   const raw = $('codeIn').value, code = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
   const msg = $('codeMsg');
   if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; A.unlock('code_choco'); playBoss('choco'); }
   else if (code === 'verity') { msg.textContent = '🙂 ¡Código correcto! Entrando a la casa de Verity…'; $('codeIn').value = ''; A.unlock('code_verity'); playBoss('verity'); }
   else if (code === 'sonic1exe') { msg.textContent = '💀 ¡Código correcto! Corrompiendo Green Hills…'; $('codeIn').value = ''; A.unlock('code_exe'); playBoss('exe'); }
+  else if (code === 'ended') { $('codeIn').value = ''; msg.textContent = ''; showSoon(); }
   else if (!code) msg.textContent = '';
   else msg.textContent = '❌ Código incorrecto';
 }

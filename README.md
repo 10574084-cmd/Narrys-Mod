@@ -125,3 +125,6 @@ Opciones → «📱 Controles táctiles»: tamaño del joystick y de los botones
 - En las peleas de jefes los CPUs son más hábiles (menos reacción, mejor puntería).
 - **Varias armas:** los CPUs pueden llevar hasta 6 armas distintas (como el jugador), usan la mejor con munición, cambian cuando se les acaba y al morir sueltan todas.
 - La lluvia de chocolate de la fase 3 es menos letal: menos zonas, más aviso y más pequeñas.
+
+## Código «ended?»
+Escribir `ended?` en «Códigos secretos» muestra el texto **UPDATECOMINSOON** a pantalla completa y te manda al menú principal.
