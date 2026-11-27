@@ -107,3 +107,6 @@ Menú → **👥 Cooperativo**: uno pulsa «Crear sala» y pasa el código; el o
 
 ## Final de ???
 Al derrotar el jefe final se desbloquea el mapa **Zona Glitch** (jugable en «Mapa y partida») y salen los **créditos** (Prompting: Ms63 · Coding: Claude · Creador de Claude: Anthropic · música y tecnología). Luego puedes verlos otra vez con el botón «🎬 Créditos» del menú.
+
+## Tutorial para nuevos
+La primera vez que llegas al menú principal (justo después de la intro) aparece un tutorial de 6 pasos (objetivo, controles, armas y tienda, monedas y logros, secretos, cooperativo). Se puede saltar y no vuelve a salir (`narrysmod_tut_v1`). Puedes verlo otra vez con el botón «❓ Tutorial» del menú.

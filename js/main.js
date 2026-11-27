@@ -474,7 +474,7 @@ updSummary();
 $('retry').onclick = () => { if (guestBlock()) return; show('over', false); $('over').classList.remove('troll'); lastBoss ? playBoss(lastBoss, lastRush) : play(); };
 $('toMenu1').onclick = toMenu; $('toMenu2').onclick = () => { clearTimeout(rushTimer); $('over').classList.remove('rushnext'); toMenu(); };
 $('resume').onclick = () => { show('pause', false); game.unpause(); game.lock(); };
-window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT' && !introActive()) play(); });
+window.addEventListener('keydown', e => { if (e.code === 'Enter' && !$('menu').classList.contains('hidden') && document.activeElement.tagName !== 'INPUT' && !introActive() && $('tutorial').classList.contains('hidden')) play(); });
 
 try {
   title = new TitleScene($('bg3d'));
@@ -485,7 +485,31 @@ try {
 
 window.__playBoss = (k, r) => playBoss(k, r); window.__game = game; window.__maps = MAP_DEFS; // útil para depurar en la consola
 
-runIntro();
+/* ---------- tutorial para jugadores nuevos ---------- */
+const TUT_KEY = 'narrysmod_tut_v1';
+const TUT = [
+  ['🎯 Objetivo', 'Sobrevive hasta que se acabe el tiempo. Los NEXTBOTS (memes con cara) te persiguen por el mapa: si te tocan, pierdes.\nTambién juegan CPUs: pueden morir antes que tú.'],
+  ['🕹️ Controles', 'WASD: moverte · Ratón: mirar · Shift: correr (se gasta el aguante)\nClic: disparar · Clic derecho: apuntar · 1-6: cambiar de arma · E: revivir a un CPU caído.\nEn celular: joystick y botones en pantalla. Puedes cambiar las teclas en ⚙️ Opciones.'],
+  ['🔫 Armas', 'Al principio NO aparece ninguna arma en el mapa. Para tenerlas, desbloquéalas comprándolas en la 🛒 Tienda: cuando compras una, ya aparece en el suelo de todas tus partidas. Con ella puedes aturdir nextbots; la bazuca los destierra.'],
+  ['🪙 Monedas y logros', 'Ganas monedas sobreviviendo, ganando rondas y derrotando jefes. Úsalas en la tienda para armas y skins.\nEl 🏆 de arriba a la derecha guarda tus logros (¡hay secretos ???!).'],
+  ['🔑 Secretos y jefes', 'En «Códigos secretos» puedes escribir códigos para peleas especiales contra jefes. Si los derrotas desbloqueas cosas nuevas… y quizá algo más al terminar con todos. 👀'],
+  ['👥 Cooperativo y listo', 'Puedes jugar con un amigo desde 👥 Cooperativo (uno crea la sala y le pasa el código).\nTodo esto lo puedes ver otra vez con el botón ❓ Tutorial. ¡Pulsa ▶ INICIAR y suerte!'],
+];
+let tutI = 0;
+function tutRender() {
+  const t = TUT[tutI]; $('tutN').textContent = `PASO ${tutI + 1} DE ${TUT.length}`; $('tutTitle').textContent = t[0]; $('tutText').textContent = t[1];
+  $('tutDots').innerHTML = TUT.map((_, i) => `<i class="${i === tutI ? 'on' : ''}"></i>`).join('');
+  $('tutBack').style.visibility = tutI ? 'visible' : 'hidden'; $('tutNext').textContent = tutI === TUT.length - 1 ? '¡A jugar!' : 'Siguiente →';
+}
+function showTutorial() { tutI = 0; tutRender(); show('tutorial', true); }
+function closeTutorial() { show('tutorial', false); try { localStorage.setItem(TUT_KEY, '1'); } catch { /* nada */ } }
+$('tutNext').onclick = () => { if (tutI >= TUT.length - 1) closeTutorial(); else { tutI++; tutRender(); } };
+$('tutBack').onclick = () => { if (tutI > 0) { tutI--; tutRender(); } };
+$('tutSkip').onclick = closeTutorial;
+$('btnTut').onclick = showTutorial;
+window.__tutorial = showTutorial;
+const isNewPlayer = () => { try { return !localStorage.getItem(TUT_KEY); } catch { return false; } };
+runIntro(() => { if (isNewPlayer()) setTimeout(showTutorial, 1200); });
 
 /* ---------- logros: botón del trofeo, pantalla y aviso ---------- */
 const updTrophy = () => { $('trophyN').textContent = `${A.count()}/${A.ACH.length}`; };

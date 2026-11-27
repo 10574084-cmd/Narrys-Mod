@@ -52,6 +52,7 @@
           <button class="menuBtn" data-go="scrCodes">🔑 Códigos secretos</button>
           <button class="menuBtn hidden" id="btnRush">???</button>
           <button class="menuBtn hidden" id="btnCredits">🎬 Créditos</button>
+          <button class="menuBtn" id="btnTut">❓ Tutorial</button>
         </div>
         <div id="mapChips" class="chips"></div>
         <p class="hint" id="summary" style="text-align:center"></p>
@@ -278,6 +279,19 @@
   </div>
 
   <!-- FIN -->
+  <div id="tutorial" class="hidden">
+    <div class="card tutCard">
+      <div class="tutStep"><span id="tutN"></span></div>
+      <h2 id="tutTitle"></h2>
+      <p id="tutText"></p>
+      <div class="tutDots" id="tutDots"></div>
+      <div class="row">
+        <button id="tutBack" class="btn ghost" type="button">← Atrás</button>
+        <button id="tutNext" class="btn" type="button">Siguiente →</button>
+      </div>
+      <button id="tutSkip" class="tutSkip" type="button">Saltar tutorial</button>
+    </div>
+  </div>
   <div id="credits" class="hidden">
     <div id="creditsRoll">
       <h1>NARRY'S MOD</h1>
