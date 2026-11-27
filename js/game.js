@@ -641,7 +641,7 @@ export class Game {
       const model = createHumanoid(this.q.cpuShadows && !o.boss);
       const tag = makeNameTag(name); model.add(tag);
       model.position.set(w.x, 0, w.z); this.scene.add(model);
-      const skill = rand(0.3, 1);
+      const skill = o.boss ? rand(0.65, 1) : rand(0.3, 1); // en los jefes los CPUs son más listos
       this.cpus.push({ type: 'cpu', name, x: w.x, z: w.z, r: 0.4, alive: true, model, tag, skill, reactTime: rand(0.15, 0.8) * (1.4 - skill),
         react: 0, mode: 'wander', path: null, pi: 0, repath: 0, idle: Math.random() * 2, stamina: 1, tired: false, yaw: Math.random() * 6.28, spd: 0, lx: w.x, lz: w.z, stuckT: 0,
         gun: null, gunModel: null, aim: 0, lostT: 0 });
@@ -900,14 +900,18 @@ export class Game {
 
   // un CPU que muere con arma la deja a su lado, con la munición que le quedaba
   dropCpuGun(c) {
-    const g = c.gun; c.gun = null; this.setCpuGunModel(c, null);
-    if (!g || g.ammo <= 0) return;
-    let x = c.x, z = c.z;
-    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, -0.7]]) {
-      if (!this.world.collides(c.x + dx, c.z + dz, 0.3)) { x = c.x + dx; z = c.z + dz; break; }
-    }
-    this.pickups.push(this.makePickup(g.type, x, z, g.ammo));
-    this.feed(`🔫 ${c.name} soltó su ${WEAPONS[g.type].name}`);
+    const all = this.cpuGuns(c).filter(g => g.ammo > 0); c.gun = null; c.stash = []; this.setCpuGunModel(c, null);
+    if (!all.length) return;
+    const offs = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7]];
+    all.forEach((g, i) => {
+      let x = c.x, z = c.z;
+      for (let k = 0; k < offs.length; k++) {
+        const [dx, dz] = offs[(i + k) % offs.length], m = 1 + Math.floor(i / 8) * 0.6;
+        if (!this.world.collides(c.x + dx * m, c.z + dz * m, 0.3)) { x = c.x + dx * m; z = c.z + dz * m; break; }
+      }
+      this.pickups.push(this.makePickup(g.type, x, z, g.ammo));
+    });
+    this.feed(`🔫 ${c.name} soltó ${all.length > 1 ? all.length + ' armas' : 'su ' + WEAPONS[all[0].type].name}`);
   }
 
   showWeaponModel(type) {
@@ -948,7 +952,7 @@ export class Game {
 
   revive(c) {
     c.alive = true; c.invuln = 3; c.mode = 'wander'; c.path = null; c.idle = 0.6; c.react = 0; c.lostT = 0;
-    c.stamina = 1; c.tired = false; c.spd = 0; c.aim = 0; c.gun = null; this.setCpuGunModel(c, null);
+    c.stamina = 1; c.tired = false; c.spd = 0; c.aim = 0; c.gun = null; c.stash = []; this.setCpuGunModel(c, null);
     c.model.userData.fall = 0; c.model.rotation.x = 0; c.model.position.y = 0; c.tag.visible = true;
     this.onEvent('stat', { k: 'revive' });
     this.toast(`💚 Reviviste a ${c.name}`, 1800); this.feed(`💚 Reviviste a ${c.name}`, true); this.sfx.revive();
@@ -1249,17 +1253,25 @@ export class Game {
     c.model.userData.body.add(m); c.gunModel = m;
   }
 
+  // los CPUs pueden llevar varias armas (hasta 6 espacios, como el jugador): c.gun es la activa y c.stash el resto
+  cpuGuns(c) { return c.gun ? [c.gun, ...(c.stash || [])] : (c.stash || []); }
   cpuWants(c, type) {
-    if (!c.gun) return true;
-    if (c.gun.type === type) return c.gun.ammo < WEAPONS[type].ammo * 2;
-    return RANK[type] > RANK[c.gun.type] || c.gun.ammo <= 1;
+    const all = this.cpuGuns(c), same = all.find(g => g.type === type);
+    if (same) return same.ammo < WEAPONS[type].ammo * 2;
+    return all.length < 6;
   }
-
+  cpuPick(c) { // equipa la mejor arma con munición
+    const all = this.cpuGuns(c).filter(g => g.ammo > 0).sort((a, b) => RANK[b.type] - RANK[a.type]);
+    const prev = c.gun && c.gun.type; c.gun = all[0] || null; c.stash = all.slice(1);
+    if ((c.gun && c.gun.type) !== prev) this.setCpuGunModel(c, c.gun ? c.gun.type : null);
+  }
   cpuTake(c, pk) {
     const def = WEAPONS[pk.type], got = pk.ammo ?? def.ammo;
     pk.taken = true; pk.takenAt = this.time; pk.mesh.visible = false;
-    if (c.gun && c.gun.type === pk.type) c.gun.ammo = Math.min(def.ammo * 3, c.gun.ammo + got);
-    else { c.gun = { type: pk.type, ammo: Math.min(def.ammo * 3, got), cd: 0.6 }; this.setCpuGunModel(c, pk.type); }
+    const same = this.cpuGuns(c).find(g => g.type === pk.type);
+    if (same) same.ammo = Math.min(def.ammo * 3, same.ammo + got);
+    else { (c.stash = c.stash || []).push({ type: pk.type, ammo: Math.min(def.ammo * 3, got), cd: 0.6 }); }
+    this.cpuPick(c);
     this.feed(`🔫 ${c.name} recogió ${def.name}`);
   }
 
@@ -1274,7 +1286,7 @@ export class Game {
       else if (def.blast) this.explode(b.x, b.boss ? 3 : 1.4, b.z, def, c.name);
       else { this.stunBot(b, def.stun); this.feed(`🔫 ${c.name} aturdió a ${b.name}`); }
     }
-    if (g.ammo <= 0) { c.gun = null; this.setCpuGunModel(c, null); }
+    if (g.ammo <= 0) this.cpuPick(c); // se le acabó: pasa a otra arma si tiene
   }
 
   // busca el arma más cercana que le interese (solo si no hay nextbots cerca)
@@ -1298,6 +1310,20 @@ export class Game {
     if (c.remote) { if (!c.alive) animateHumanoid(c.model, dt, 0, true); return; } // el amigo lo controla él mismo
     if (!c.alive) { animateHumanoid(c.model, dt, 0, true); return; }
     if (c.invuln > 0) c.invuln -= dt;
+    // esquiva las zonas de peligro marcadas en el suelo (meteoritos de chocolate, pisotones)
+    const hz = this.tele && this.tele.length ? this.tele.find(e => e.danger && Math.hypot(e.x - c.x, e.z - c.z) < e.r + 1.5) : null;
+    if (hz) {
+      c.hzT = (c.hzT || 0) + dt;
+      if (c.hzT > (1 - c.skill) * 0.3) {
+        let dx = c.x - hz.x, dz = c.z - hz.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+        const sp = 8.5 + c.skill * 3, ox = c.x, oz = c.z;
+        W.move(c, dx * sp * dt, dz * sp * dt);
+        if (Math.hypot(c.x - ox, c.z - oz) < sp * dt * 0.3) W.move(c, -dz * sp * dt, dx * sp * dt); // bloqueado: se escapa de lado
+        let da = Math.atan2(dx, dz) - c.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); c.yaw += da * Math.min(1, dt * 12);
+        c.spd += (sp - c.spd) * Math.min(1, dt * 8); c.path = null; c.mode = 'flee';
+        return;
+      }
+    } else c.hzT = 0;
     // percepción: nextbot más cercano y el más cercano que realmente ve
     let threat = null, td = 1e9, seen = null, sd = 1e9;
     const sight = c.skill > 0.65 ? 34 : 24;
@@ -1540,10 +1566,10 @@ export class Game {
   }
 
   /* ---- fases y ataques propios de cada jefe (se activan al 66 % y al 33 % de vida) ---- */
-  addTele(x, z, r, T, fn, col = 0xff2020) {
+  addTele(x, z, r, T, fn, col = 0xff2020, danger = false) {
     const m = new THREE.Mesh(new THREE.CircleGeometry(1, 36), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, depthWrite: false, fog: false, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2; m.position.set(x, 0.07, z); m.scale.set(r, r, 1); this.scene.add(m);
-    this.tele.push({ m, x, z, r, t: 0, T, fn });
+    this.tele.push({ m, x, z, r, t: 0, T, fn, danger });
   }
   updateTele(dt) {
     for (let i = this.tele.length - 1; i >= 0; i--) {
@@ -1581,16 +1607,16 @@ export class Game {
       b.busy = 1.0; this.addTele(sp.x, sp.z, 1.8, 0.95, () => { if (!b.dead) { b.x = sp.x; b.z = sp.z; b.lx = b.x; b.lz = b.z; b.flash = 0.3; b.path = null; } }, 0x40a0ff);
     } else if (id === 'secret-exe-knuckles') { // PISOTÓN con área
       const R = hard ? 8.5 : 6.5; b.busy = 1.3; b.atkT = hard ? 5 : 8;
-      this.addTele(b.x, b.z, R, 1.2, e => { this.explode(e.x, 0.5, e.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(e.x, e.z, R, b); }, 0xff7a20);
+      this.addTele(b.x, b.z, R, 1.2, e => { this.explode(e.x, 0.5, e.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(e.x, e.z, R, b); }, 0xff7a20, true);
       this.feed('👊 ¡KNUCKLES.EXE va a pisotear el suelo!');
     } else if (id === 'secret-verity') { // APAGÓN: luces fuera y más veloz
       b.atkT = hard ? 11 : 16; this.darkT = hard ? 10 : 7; this.toast('💡 ¡Verity apagó las luces!', 2500);
     } else if (id === 'secret-choco') { // LLUVIA de chocolate: zonas marcadas que explotan
-      b.atkT = hard ? 2.2 : 3.4; const n = hard ? 5 : 3;
+      b.atkT = hard ? 3.0 : 4.2; const n = hard ? 4 : 3;
       const pool = [this.player, ...this.cpus.filter(c => c.alive)].filter(e => e.alive);
       for (let i = 0; i < n && pool.length; i++) {
         const e = pool[Math.floor(Math.random() * pool.length)];
-        this.addTele(e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, 3.4, 1.4, t => { this.explode(t.x, 0.5, t.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(t.x, t.z, 3.4, b); }, 0x7a4a20);
+        this.addTele(e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, 3.0, 1.8, t => { this.explode(t.x, 0.5, t.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(t.x, t.z, 3.0, b); }, 0x7a4a20, true);
       }
     } else b.atkT = 6;
     return false;

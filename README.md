@@ -119,3 +119,9 @@ Cuando la intro llega a la zona de tips aparece el botón «Saltar intro ⏭» (
 
 ## Controles táctiles configurables
 Opciones → «📱 Controles táctiles»: tamaño del joystick y de los botones, opacidad, sensibilidad al mirar, modo zurdo, ocultar linterna y saltar, y botón para restablecer.
+
+## CPUs más listos
+- **Esquivan los ataques marcados** de los jefes (lluvia de chocolate de «Odio el chocolate», pisotón de Knuckles): al ver la zona roja en el suelo salen corriendo.
+- En las peleas de jefes los CPUs son más hábiles (menos reacción, mejor puntería).
+- **Varias armas:** los CPUs pueden llevar hasta 6 armas distintas (como el jugador), usan la mejor con munición, cambian cuando se les acaba y al morir sueltan todas.
+- La lluvia de chocolate de la fase 3 es menos letal: menos zonas, más aviso y más pequeñas.
