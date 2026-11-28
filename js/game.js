@@ -704,7 +704,7 @@ export class Game {
     this._ct = (this._ct || 0) + dt; if (this._ct < 1 / 15) return; this._ct = 0;
     const r = v => Math.round(v * 100) / 100, c = [];
     for (const e of this.cpus) c.push(r(e.x), r(e.z), r(e.yaw || 0), e.alive ? 1 : 0, r(e.spd || 0));
-    const b = this.bots.map(x => [x.active ? 1 : 0, r(x.x), r(x.z), Math.round(x.hp || 0), x.stun > 0 ? 1 : 0, x.state === 'chase' ? 1 : x.state === 'search' ? 2 : 0, x.dead ? 1 : 0]);
+    const b = this.bots.map(x => [x.active && !x.hidden ? 1 : 0, r(x.x), r(x.z), Math.round(x.hp || 0), x.stun > 0 ? 1 : 0, x.state === 'chase' ? 1 : x.state === 'search' ? 2 : 0, x.dead ? 1 : 0]);
     const P = this.player;
     this.net.send({ t: 's', tm: r(this.time), c, b, h: [r(P.x), r(P.z), r(this.yaw), P.alive ? 1 : 0] });
     const sig = this.pickups.length + ':' + this.pickups.map(p => p.taken ? 1 : 0).join('');
@@ -1155,15 +1155,15 @@ export class Game {
   }
 
   // El Chavo: se mete en un barril y sale de golpe cuando alguien se acerca (o tras un rato, si nadie llega)
-  hideInBarrel(b, ref, minD = 12) {
+  hideInBarrel(b, ref, minD = 8) {
     const bl = this.map.barrels || []; if (!bl.length) return false;
     const cand = bl.filter(q => Math.hypot(q.x - ref.x, q.z - ref.z) > minD && Math.hypot(q.x - b.x, q.z - b.z) > 3);
     const list = cand.length ? cand : bl;
     // prefiere los barriles ~20 m del objetivo: lo bastante cerca para que alguien caiga
-    list.sort((u, v) => Math.abs(Math.hypot(u.x - ref.x, u.z - ref.z) - 20) - Math.abs(Math.hypot(v.x - ref.x, v.z - ref.z) - 20));
+    list.sort((u, v) => Math.abs(Math.hypot(u.x - ref.x, u.z - ref.z) - 13) - Math.abs(Math.hypot(v.x - ref.x, v.z - ref.z) - 13));
     const q = list[Math.floor(Math.random() * Math.min(3, list.length))];
     b.x = q.x; b.z = q.z; b.lx = b.x; b.lz = b.z; b.path = null; b.goalX = null;
-    b.hidden = true; b.hideT = 0; b.mesh.visible = false; b.halo.visible = false;
+    b.hidden = true; b.hideT = 0; b.hideMax = 7 + Math.random() * 5; b.mesh.visible = false; b.halo.visible = false;
     return true;
   }
   popOut(b) {
@@ -1580,8 +1580,8 @@ export class Game {
     const P = this.player;
     if (b.hidden) { // escondido en el barril: sale si alguien se acerca (≈5 m) o si pasa mucho tiempo
       b.hideT += dt; b.state = 'patrol';
-      const near = [P, ...this.cpus].some(e => e.alive && Math.hypot(e.x - b.x, e.z - b.z) < 5);
-      if (near || b.hideT > 40) this.popOut(b);
+      const near = [P, ...this.cpus].some(e => e.alive && Math.hypot(e.x - b.x, e.z - b.z) < 6);
+      if (near || b.hideT > (b.hideMax || 9)) this.popOut(b);
       return;
     } let sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
     if (this.opts.bossRamp) sp *= Math.min(1, 0.45 + 0.55 * (this.time - (b.spawnedAt || 0)) / this.opts.bossRamp); // arranca lento para que los CPUs puedan organizarse
@@ -1653,8 +1653,8 @@ export class Game {
         this.addTele(e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, 3.0, 1.8, t => { this.explode(t.x, 0.5, t.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(t.x, t.z, 3.0, b); }, 0x7a4a20, true);
       }
     } else if (id === 'secret-chavo') { // vuelve a esconderse en otro barril para una nueva emboscada
-      b.atkT = hard ? 14 : 20;
-      if (this.hideInBarrel(b, tg, 10)) { this.toast('🛢️ El Chavo se metió en otro barril…', 2400); return true; }
+      b.atkT = hard ? 12 : 16;
+      if (this.hideInBarrel(b, tg, 8)) { this.toast('🛢️ El Chavo se metió en otro barril…', 2400); return true; }
     } else b.atkT = 6;
     return false;
   }
