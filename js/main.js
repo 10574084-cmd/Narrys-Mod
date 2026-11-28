@@ -407,10 +407,11 @@ game.onEvent = (type, d) => {
     $('overText').textContent = game.bossDead ? `¡Derrotaste a ${bossName()} junto a tus CPUs! Quedan ${d.survivors} de ${d.total} jugadores con vida.` + roundCoins(d, true) : `Aguantaste toda la ronda. Quedan ${d.survivors} de ${d.total} jugadores con vida.` + roundCoins(d, true);
     $('spectHint').textContent = ''; show('over', true); if (document.pointerLockElement) document.exitPointerLock(); rushAdvance();
   } else if (type === 'end') {
-    bossReward(); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); }
+    // si mueres, no cuenta aunque los CPUs derroten al jefe (sin recompensas ni avance del ???)
+    unlockMsg(''); { const troll = !!(game.opts && game.opts.boss) && lastBoss === 'choco' && !game.bossDead; show('loseLink', troll); $('over').classList.toggle('troll', troll); }
     $('over').classList.remove('win'); $('overTitle').textContent = 'RONDA TERMINADA';
-    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${bossName()}. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` + roundCoins(d, false) : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.` + roundCoins(d, false);
-    $('spectHint').textContent = ''; show('over', true); rushAdvance();
+    $('overText').textContent = game.bossDead ? `Tus CPUs derrotaron a ${bossName()}, pero tú moriste: para desbloquear recompensas tienes que sobrevivir. Sobrevivieron ${d.survivors} de ${d.total} jugadores.` + roundCoins(d, false) : `Sobrevivieron ${d.survivors} de ${d.total} jugadores.` + roundCoins(d, false);
+    $('spectHint').textContent = ''; show('over', true);
   }
 };
 
@@ -577,7 +578,7 @@ function renderShop() {
 $('btnShop').onclick = $('coinBtn').onclick = () => { renderShop(); go('scrShop'); };
 renderShop();
 function earn(n) { if (game.opts && game.opts.cheats && !game.opts.boss && !game.opts.coop) return ' · sin monedas (cheats activos)'; n = Shop.addCoins(n); renderShop(); return n ? ` · +${n} 🪙` : ''; }
-const roundCoins = (d, won) => earn(Math.floor(d.time / 12) + (won ? 30 : 0) + (game.bossDead ? (lastBoss === 'final' ? 800 : 200) : 0));
+const roundCoins = (d, won) => earn(Math.floor(d.time / 12) + (won ? 30 : 0) + (game.bossDead && won ? (lastBoss === 'final' ? 800 : 200) : 0));
 $('trophyBtn').onclick = () => { A.render($('achList'), $('achHead')); go('scrAch'); };
 let achQ = [], achBusy = false;
 function showAch() {
