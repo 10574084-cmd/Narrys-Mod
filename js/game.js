@@ -34,7 +34,7 @@ function haloTexture() {
 
 const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
 const CPU_LOOT_DELAY = 10;
-const BOSS_HP = 14000, EXE_HP = 5000, VERITY_HP = 10000, VERITY_SIZE = 2.2, CHAVO_HP = 8000, CHAVO_SIZE = 3.2;
+const BOSS_HP = 14000, EXE_HP = 5000, VERITY_HP = 10000, VERITY_SIZE = 2.2, CHAVO_HP = 20000, CHAVO_SIZE = 3.2;
 const bossIco = b => { const id = String(b && b.meme && b.meme.id); return id.startsWith('secret-exe-') ? '💀' : id === 'secret-verity' ? '🙂' : id === 'secret-chavo' ? '🛢️' : '🍫'; };
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, smg: 1.5, shotgun: 2, sniper: 2.5, grenade: 2.8, bazooka: 3 };
@@ -1586,6 +1586,7 @@ export class Game {
       if (near || b.hideT > (b.hideMax || 9)) this.popOut(b);
       return;
     } let sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
+    if (b.meme && b.meme.id === 'secret-chavo') sp *= 1.3; // el Chavo es más rápido
     if (this.opts.bossRamp) sp *= Math.min(1, 0.45 + 0.55 * (this.time - (b.spawnedAt || 0)) / this.opts.bossRamp); // arranca lento para que los CPUs puedan organizarse
     b.retarget -= dt;
     if (b.retarget <= 0 || !b.target || !b.target.alive) {
