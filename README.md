@@ -83,6 +83,9 @@ Cuando derrotas a un jefe secreto aparece un atajo en la esquina superior izquie
 ## Música de los jefes
 Durante el boss fight suena una canción de fondo (en bucle, con el volumen de Opciones): «Odio el chocolate (Chase theme)» contra ODIO EL CHOCOLATE y «EXE FUNK» contra SONIC.EXE y sus amigos (`assets/music/`). Se pausa con el juego y se corta al terminar la ronda.
 
+## Código secreto: Chavo
+Escribe `Chavo` en «Códigos secretos»: boss fight contra **EL CHAVO** (8 000 de vida) en **La Vecindad** (mapa original inspirado en la vecindad: patio de baldosas, paredes amarillas con zócalo terracota, puertas, lavadero, triciclo, macetas, escaleras y barriles), con 70 CPUs y de fondo «The Elephant Never Forgets» (`assets/music/chavo-elephant.mp3`). El Chavo **se esconde en un barril** y sale de golpe cuando alguien se acerca (~5 m) o, si nadie llega, a los 40 s, y entonces persigue. En fase 2 y 3 se vuelve a meter en otro barril para emboscar de nuevo; escondido no recibe daño. Cada vez que atrapa a alguien suena «¡Fue sin querer queriendo!» (`assets/music/chavo-sin-querer.mp3`). Al derrotarlo desbloqueas el mapa y al Chavo como nextbot. (En cooperativo el sonido de captura solo suena en el anfitrión.)
+
 ## Código secreto: Verity
 Escribe `Verity` en «Códigos secretos»: boss fight contra **VERITY** (10 000 de vida) en la **Casa de Verity**, una casa de varias habitaciones con suelo de madera, con 55 CPUs armados de ayuda y su canción de fondo (instrumental; las voces suenan solo cuando te acercas a ella, `assets/music/verity-*.mp3`). Al derrotarla desbloqueas el mapa y a Verity como nextbot, y aparece su atajo en el menú.
 
@@ -100,7 +103,7 @@ El jefe final empieza con una intro: miras a los jefes «solo», llegan los 150 
 Ganas 🪙 al sobrevivir (1 cada 12–15 s), al ganar y al derrotar jefes (200; 800 en el jefe final). En **🛒 Tienda** (o tocando las monedas arriba) compras **skins de arma** (Dorada, Neón, Sangre, Hielo, Vacío, Arcoíris) y **desbloqueas armas**: comprar un arma la desbloquea para siempre y **solo las armas desbloqueadas aparecen en el suelo** de las partidas (al principio no aparece ninguna). Datos en `narrysmod_shop_v1`.
 
 ## Fases de los jefes
-Al 66 % y al 33 % de vida los jefes entran en fase 2 y 3 con ataques propios (con aviso en el suelo): Sonic.exe embiste en línea recta, Tails Doll se teletransporta junto a su objetivo, Knuckles.exe pisotea con área, Verity apaga las luces y Odio el chocolate lanza lluvia de chocolate.
+Al 66 % y al 33 % de vida los jefes entran en fase 2 y 3 con ataques propios (con aviso en el suelo): Sonic.exe embiste en línea recta, Tails Doll se teletransporta junto a su objetivo, Knuckles.exe pisotea con área, Verity apaga las luces, el Chavo se esconde en otro barril y Odio el chocolate lanza lluvia de chocolate.
 
 ## Cooperativo (2 jugadores)
 Menú → **👥 Cooperativo**: uno pulsa «Crear sala» y pasa el código; el otro lo escribe y pulsa «Unirme». El **anfitrión** inicia la partida (normal, códigos, jefes, ???) y el invitado entra solo. Conexión directa WebRTC con PeerJS (`js/net.js`, sin servidor propio; usa el servidor público de PeerJS solo para el emparejado). El anfitrión simula todo; el invitado ve el mundo, se mueve, recoge armas y dispara (el anfitrión aplica el daño). Limitaciones: el invitado usa los nextbots integrados, no hay intro del jefe final y no puede revivir CPUs. `?nettest=bc` usa BroadcastChannel entre pestañas (solo para pruebas).

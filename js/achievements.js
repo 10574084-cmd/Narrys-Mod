@@ -56,6 +56,8 @@ export const ACH = [
   { id: 'code_exe', icon: '💻', name: 'Código .EXE', desc: 'Descubre el segundo código secreto.', secret: true },
   { id: 'boss_exe', icon: '🦔', name: 'Fin de la colina', desc: 'Derrota a SONIC.EXE y sus amigos.', secret: true },
   { id: 'code_verity', icon: '🏠', name: 'Visita a casa', desc: 'Descubre el tercer código secreto.', secret: true },
+  { id: 'code_chavo', icon: '🛢️', name: 'Sin querer queriendo', desc: 'Descubre el código del Chavo.', secret: true },
+  { id: 'boss_chavo', icon: '🛢️', name: '¡Chusma, chusma!', desc: 'Derrota al Chavo en su vecindad.', secret: true },
   { id: 'boss_verity', icon: '🙂', name: 'La sonrisa se apagó', desc: 'Derrota a VERITY en su casa.', secret: true },
   { id: 'master', icon: '🔓', name: 'Maestro de los secretos', desc: 'Desbloquea a todos los jefes secretos.', secret: true },
   { id: 'rush_final', icon: '👾', name: '???', desc: 'Derrota a todos los jefes juntos en la Zona Glitch.', secret: true },

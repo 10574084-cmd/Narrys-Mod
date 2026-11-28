@@ -34,8 +34,8 @@ function haloTexture() {
 
 const REVIVE_TIME = 2.5, REVIVE_RANGE = 2.6; // segundos y distancia para revivir a un CPU
 const CPU_LOOT_DELAY = 10;
-const BOSS_HP = 14000, EXE_HP = 5000, VERITY_HP = 10000, VERITY_SIZE = 2.2;
-const bossIco = b => { const id = String(b && b.meme && b.meme.id); return id.startsWith('secret-exe-') ? '💀' : id === 'secret-verity' ? '🙂' : '🍫'; };
+const BOSS_HP = 14000, EXE_HP = 5000, VERITY_HP = 10000, VERITY_SIZE = 2.2, CHAVO_HP = 8000, CHAVO_SIZE = 3.2;
+const bossIco = b => { const id = String(b && b.meme && b.meme.id); return id.startsWith('secret-exe-') ? '💀' : id === 'secret-verity' ? '🙂' : id === 'secret-chavo' ? '🛢️' : '🍫'; };
 const PICKUP_RESPAWN = 60; // segundos hasta que reaparece un arma recogida (la bazuca no reaparece)
 const RANK = { revolver: 1, smg: 1.5, shotgun: 2, sniper: 2.5, grenade: 2.8, bazooka: 3 };
 const WEAPONS = {
@@ -615,6 +615,7 @@ export class Game {
     // Sonic.exe y sus amigos: jefes con 5000 de vida y el tamaño de un nextbot normal
     for (const b of this.bots) if (b.meme && String(b.meme.id).startsWith('secret-exe-')) { this.makeBoss(b, 2.6, EXE_HP * (o.hpMul || 1)); b.bw = clamp(2.6 * (b.meme.aspect || 0.7), 1.2, 4.2); }
     for (const b of this.bots) if (b.meme && b.meme.id === 'secret-verity') this.makeBoss(b, VERITY_SIZE, VERITY_HP * (o.hpMul || 1)); // Verity
+    for (const b of this.bots) if (b.meme && b.meme.id === 'secret-chavo') { this.makeBoss(b, CHAVO_SIZE, CHAVO_HP * (o.hpMul || 1)); b.bw = clamp(CHAVO_SIZE * (b.meme.aspect || 0.4), 1.0, 4.2); b.killR = 1.3; } // El Chavo
     this.bossBot = this.bots.find(b => b.boss) || null;
     if (o.boss) this.bots.filter(b => b.boss).forEach((b, i) => { b.spawnAt = 6 + i * 3 + (o.bossDelay || 0); });
   }
@@ -1017,7 +1018,7 @@ export class Game {
     // impacto contra nextbots (la mira se tolera según el arma)
     let best = null, bt = def.range;
     for (const b of this.bots) {
-      if (!b.active) continue;
+      if (!b.active || b.hidden) continue;
       const vx = b.x - cam.position.x, vy = (b.boss ? b.bh / 2 : 1.45) - cam.position.y, vz = b.z - cam.position.z;
       const t = vx * d.x + vy * d.y + vz * d.z;
       if (t < 0 || t > def.range) continue;
@@ -1072,7 +1073,7 @@ export class Game {
     this.sfx.burst(1.3, 110, by ? Math.max(0.08, 1 - Math.hypot(x - this.player.x, z - this.player.z) / 60) : 1.0, 0.6, 'lowpass');
     let hit = 0;
     for (const b of this.bots) {
-      if (!b.active) continue;
+      if (!b.active || b.hidden) continue;
       if (b.boss) { if (Math.hypot(b.x - x, b.z - z) < def.blast + b.bw / 2 && def.dmg) this.hitBoss(b, def.dmg); continue; }
       if (Math.hypot(b.x - x, b.z - z) < def.blast) { this.banish(b, def.stun); hit++; this.feed(by ? `💥 ${by} desterró a ${b.name}` : `💥 ${b.name} fue desterrado por la bazuca`, !by); }
     }
@@ -1148,8 +1149,32 @@ export class Game {
     }
     b.x = best.x; b.z = best.z; b.lx = b.x; b.lz = b.z; b.active = true; b.mesh.visible = true; b.halo.visible = true;
     b.state = 'patrol'; b.goalX = null; b.stateT = 0;
+    if (b.meme && b.meme.id === 'secret-chavo' && this.hideInBarrel(b, ref)) { this.toast('🛢️ El Chavo se escondió en un barril…', 3200); return; }
     this.toast(`¡${b.name.toUpperCase()} apareció!`, 2200); this.coopSend({ t: 'toast', m: `¡${b.name.toUpperCase()} apareció!` });
     this.sfx.spawn();
+  }
+
+  // El Chavo: se mete en un barril y sale de golpe cuando alguien se acerca (o tras un rato, si nadie llega)
+  hideInBarrel(b, ref, minD = 12) {
+    const bl = this.map.barrels || []; if (!bl.length) return false;
+    const cand = bl.filter(q => Math.hypot(q.x - ref.x, q.z - ref.z) > minD && Math.hypot(q.x - b.x, q.z - b.z) > 3);
+    const list = cand.length ? cand : bl;
+    // prefiere los barriles ~20 m del objetivo: lo bastante cerca para que alguien caiga
+    list.sort((u, v) => Math.abs(Math.hypot(u.x - ref.x, u.z - ref.z) - 20) - Math.abs(Math.hypot(v.x - ref.x, v.z - ref.z) - 20));
+    const q = list[Math.floor(Math.random() * Math.min(3, list.length))];
+    b.x = q.x; b.z = q.z; b.lx = b.x; b.lz = b.z; b.path = null; b.goalX = null;
+    b.hidden = true; b.hideT = 0; b.mesh.visible = false; b.halo.visible = false;
+    return true;
+  }
+  popOut(b) {
+    b.hidden = false; b.mesh.visible = true; b.halo.visible = true; b.flash = 0.4; b.path = null; b.retarget = 0;
+    this.toast('🛢️ ¡EL CHAVO salió del barril!', 2200); this.feed('🛢️ ¡El Chavo salió de un barril!', true); this.sfx.spawn();
+  }
+  chavoLine(e, bot) { // «fue sin querer queriendo» cada vez que el Chavo atrapa a alguien
+    const url = this.opts.killSfx; if (!url || !(bot && bot.boss)) return;
+    const now = performance.now(); if (now - (this.lastLine || 0) < 2400) return; this.lastLine = now;
+    const d = Math.hypot(e.x - this.player.x, e.z - this.player.z), vol = clamp((this.extra.volume / 100) * (e.type === 'player' ? 1.1 : clamp(1.1 - d / 70, 0.3, 1)), 0, 1);
+    try { const a = new Audio(url); a.volume = vol; a.play().catch(() => {}); } catch { /* nada */ }
   }
 
   // cheats: solo en partidas normales sin cooperativo ni jefes (y solo si se desbloquearon)
@@ -1331,7 +1356,7 @@ export class Game {
     let threat = null, td = 1e9, seen = null, sd = 1e9;
     const sight = c.skill > 0.65 ? 34 : 24;
     for (const b of this.bots) {
-      if (!b.active) continue;
+      if (!b.active || b.hidden) continue;
       const d = Math.hypot(b.x - c.x, b.z - c.z);
       if (d < td) { td = d; threat = b; }
       if (d < sight && d < sd && (d < 8 || W.los(c.x, c.z, b.x, b.z, 0.3))) { sd = d; seen = b; }
@@ -1410,7 +1435,7 @@ export class Game {
   // huida: lejos de TODOS los nextbots cercanos, sin correr hacia ellos y prefiriendo sitios ocultos a su vista
   pickFlee(c) {
     const free = this.map.free, W = this.world, n = 8 + Math.floor(c.skill * 20);
-    const near = this.bots.filter(b => b.active && !(b.stun > 0) && Math.hypot(b.x - c.x, b.z - c.z) < 50);
+    const near = this.bots.filter(b => b.active && !b.hidden && !(b.stun > 0) && Math.hypot(b.x - c.x, b.z - c.z) < 50);
     let best = null, bs = -1e9;
     for (let i = 0; i < n; i++) {
       const w = W.cellWorld(free[Math.floor(Math.random() * free.length)]);
@@ -1552,7 +1577,13 @@ export class Game {
 
   // jefe: persigue al jugador/CPU más cercano (no necesita verlo), se enfurece al perder vida
   updateBoss(b, dt) {
-    const P = this.player; let sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
+    const P = this.player;
+    if (b.hidden) { // escondido en el barril: sale si alguien se acerca (≈5 m) o si pasa mucho tiempo
+      b.hideT += dt; b.state = 'patrol';
+      const near = [P, ...this.cpus].some(e => e.alive && Math.hypot(e.x - b.x, e.z - b.z) < 5);
+      if (near || b.hideT > 40) this.popOut(b);
+      return;
+    } let sp = 6.8 + (1 - b.hp / b.hpMax) * 2.8;
     if (this.opts.bossRamp) sp *= Math.min(1, 0.45 + 0.55 * (this.time - (b.spawnedAt || 0)) / this.opts.bossRamp); // arranca lento para que los CPUs puedan organizarse
     b.retarget -= dt;
     if (b.retarget <= 0 || !b.target || !b.target.alive) {
@@ -1621,13 +1652,16 @@ export class Game {
         const e = pool[Math.floor(Math.random() * pool.length)];
         this.addTele(e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, 3.0, 1.8, t => { this.explode(t.x, 0.5, t.z, { blast: 0, stun: 0, dmg: 0 }, b.name); this.killIn(t.x, t.z, 3.0, b); }, 0x7a4a20, true);
       }
+    } else if (id === 'secret-chavo') { // vuelve a esconderse en otro barril para una nueva emboscada
+      b.atkT = hard ? 14 : 20;
+      if (this.hideInBarrel(b, tg, 10)) { this.toast('🛢️ El Chavo se metió en otro barril…', 2400); return true; }
     } else b.atkT = 6;
     return false;
   }
 
   hitBoss(b, dmg) {
     if (this.guest) { b.flash = 0.12; return; }
-    if (!b.active || b.hp <= 0) return;
+    if (!b.active || b.hp <= 0 || b.hidden) return; // escondido en el barril no recibe daño
     b.hp = Math.max(0, b.hp - dmg); b.flash = 0.12;
     if (b.hp <= 0) this.bossDie(b);
   }
@@ -1659,6 +1693,7 @@ export class Game {
     if (!e.alive || e.invuln > 0) return;
     if (e.type === 'player' && this.cheat('god')) return; // cheat: modo dios
     e.alive = false;
+    this.chavoLine(e, bot);
     if (e.type === 'cpu') {
       e.tag.visible = false; this.sfx.thud(clamp(1 - Math.hypot(e.x - this.player.x, e.z - this.player.z) / 40, 0.03, 0.5));
       this.dropCpuGun(e);
@@ -1741,7 +1776,7 @@ export class Game {
     // nextbots
     let nearest = 1e9; const act = [];
     for (const b of this.bots) {
-      if (!b.active) continue;
+      if (!b.active || b.hidden) continue;
       b.phase += dt * 7;
       if (b.flash > 0) b.flash -= dt;
       b.mesh.material.color.setHex(b.flash > 0 ? 0xff7070 : b.stun > 0 ? 0x6f9bff : 0xffffff);
@@ -1814,7 +1849,7 @@ export class Game {
   /* ------------------------------ HUD ------------------------------ */
   updateHud() {
     const bb = $('bossBar'); let bo = null, bd = 1e9; // barra del jefe activo más cercano
-    for (const b of this.bots) if (b.boss && b.active && b.hp > 0) { const d = Math.hypot(b.x - this.player.x, b.z - this.player.z); if (d < bd) { bd = d; bo = b; } }
+    for (const b of this.bots) if (b.boss && b.active && !b.hidden && b.hp > 0) { const d = Math.hypot(b.x - this.player.x, b.z - this.player.z); if (d < bd) { bd = d; bo = b; } }
     if (this.music2) { // las voces suben de volumen al acercarte al jefe (≈4 m: a tope · 26 m: nada)
       const vol = Math.min(1, this.extra.volume / 100 * 0.9), t = bo ? Math.max(0, Math.min(1, 1 - (bd - 4) / 22)) : 0;
       this.music2.volume = vol * t * t * (3 - 2 * t);
@@ -1882,7 +1917,7 @@ export class Game {
     const x = this.miniCtx, k = 150 / (N * CELL), p = this.player;
     x.clearRect(0, 0, 150, 150); x.drawImage(this.miniBase, 0, 0);
     for (const b of this.bots) {
-      if (b.active && b.boss && b.hp > 0) { x.strokeStyle = '#ffd24d'; x.lineWidth = 2; x.beginPath(); x.arc(b.x * k, b.z * k, 6, 0, 6.3); x.stroke(); } // los jefes siempre se ven en el minimapa
+      if (b.active && b.boss && !b.hidden && b.hp > 0) { x.strokeStyle = '#ffd24d'; x.lineWidth = 2; x.beginPath(); x.arc(b.x * k, b.z * k, 6, 0, 6.3); x.stroke(); } // los jefes siempre se ven en el minimapa
       if (!b.active || (!b.boss && Math.hypot(b.x - p.x, b.z - p.z) > 30)) continue;
       x.fillStyle = b.state === 'chase' ? '#ff2a3d' : '#a8602a'; x.beginPath(); x.arc(b.x * k, b.z * k, 3, 0, 6.3); x.fill();
     }

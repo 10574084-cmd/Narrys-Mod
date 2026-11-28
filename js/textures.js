@@ -98,6 +98,17 @@ export const TEX = {
     speckle(x, 256, 256, 4000, 0.15, '255,255,255');
     return tex(c, 5, 5);
   },
+  // vecindad: pared amarilla desgastada arriba y zócalo terracota abajo
+  vecindad(a = '#e3b43c', b = '#b5583c') {
+    const [c, x] = mk();
+    x.fillStyle = a; x.fillRect(0, 0, 256, 256);
+    speckle(x, 256, 256, 3000, 0.14);
+    x.fillStyle = b; x.fillRect(0, 170, 256, 86);
+    x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(0, 166, 256, 5);
+    for (let i = 0; i < 14; i++) { x.fillStyle = 'rgba(255,255,255,0.12)'; x.beginPath(); x.ellipse(Math.random() * 256, 170 + Math.random() * 30, 14 + Math.random() * 18, 6 + Math.random() * 8, 0, 0, 6.3); x.fill(); }
+    speckle(x, 256, 256, 1500, 0.16);
+    return tex(c, 2.5, 2.5);
+  },
   // suelo/paredes a cuadros marrones y crema (estilo colina verde)
   checker(a = '#5a3416', b = '#b88a45') {
     const [c, x] = mk();

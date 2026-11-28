@@ -582,6 +582,72 @@ export const VERITY_DEF = {
   lamp: { color: 0xffe2a8, int: 38, dist: 18, panel: 0xfff0c8 }, flicker: 0.1, drone: 30, gen: genMansion,
 };
 
+
+/* ---------------------------- LA VECINDAD DEL CHAVO ---------------------------- */
+// Patio central abierto rodeado de dos edificios con puertas, lavadero, barriles, triciclo, macetas y escaleras.
+function genVecindad(def, rng) {
+  const c = ctxNew(def, rng); border(c, def.wallH); c.barrels = [];
+  const t = Math.max(6, Math.round(N * 0.17)), rw = 6;
+  for (const north of [true, false]) { // edificios norte y sur con habitaciones (puertas hacia el patio)
+    const z0 = north ? 0 : N - t, front = north ? t - 1 : N - t;
+    wallRect(c, 1, z0, N - 1, z0 + t, def.wallH);
+    for (let x0 = 2; x0 + rw < N - 1; x0 += rw + 1) {
+      for (let z = z0 + 1; z < z0 + t - 1; z++) for (let x = x0; x < x0 + rw; x++) c.g[I(x, z)] = 0;
+      for (let d = 0; d < 2; d++) c.g[I(x0 + 2 + d, front)] = 0; // puerta
+      const mid = north ? z0 + 2 : z0 + t - 3;
+      if (rng() < 0.6) addProp(c, x0 + 1, mid, { hx: 0.8, hz: 0.5, parts: [box(0, 0.4, 0, 1.6, 0.8, 1.0, 0x7a4a2a), box(0, 0.85, 0, 1.7, 0.1, 1.1, 0xc9a27a)] }); // mesa
+      if (rng() < 0.5) addProp(c, x0 + rw - 2, mid, { hx: 0.5, hz: 0.5, parts: [box(0, 0.3, 0, 1.0, 0.6, 1.0, 0xcfd8e0), box(0, 0.65, -0.3, 1.0, 0.1, 0.4, 0xe8e8e8)] }); // cama/sillón
+    }
+    // macetas con plantas frente a las paredes
+    for (let x = 3; x < N - 3; x += 3) {
+      const z = north ? t : N - t - 1;
+      if (c.g[I(x, z)] === 0 && c.g[I(x, north ? t - 1 : N - t)] === 1 && rng() < 0.7)
+        addProp(c, x, z, { hx: 0.3, hz: 0.3, parts: [part('cyl', 0, 0.3, 0, 0.55, 0.6, 0.55, 0x9a4a30), part('sphere', 0, 0.85, 0, 0.8, 0.7, 0.8, 0x2f8f3a), part('sphere', 0.15, 1.1, 0.1, 0.45, 0.4, 0.45, 0x3aa047)] });
+    }
+  }
+  const cx = Math.floor(N / 2), cz = Math.floor(N / 2);
+  const mark = (x, z) => c.g[I(x, z)] === 0;
+  // lavadero (rojo-café) en el centro
+  for (let d = -1; d <= 1; d++) if (mark(cx + d, cz)) {
+    addProp(c, cx + d, cz, { hx: 1.1, hz: 0.8, parts: [box(0, 0.5, 0, 2.4, 1.0, 1.4, 0x8a3a24), box(0, 1.02, 0, 2.0, 0.06, 1.0, 0xb8b2a8), part('cyl', 0, 1.3, -0.5, 0.1, 0.5, 0.1, 0x9aa0a8)] });
+    break;
+  }
+  // escaleras al piso de arriba (decorativas, sólidas) pegadas al edificio norte
+  const sx = Math.round(N * 0.7), sz = t;
+  if (c.g[I(sx, sz)] === 0) addProp(c, sx, sz, { hx: 1.2, hz: 1.2, parts: [0, 1, 2, 3, 4].map(k => box(0, 0.25 + k * 0.5, -1 + k * 0.45, 2.4, 0.5, 0.45 * (5 - k) + 0.5, 0xb5583c)) });
+  // barriles de madera (los que usa el Chavo para esconderse) repartidos por el patio
+  const spots = [];
+  const cands = [];
+  for (let z = t + 1; z < N - t - 1; z++) for (let x = 3; x < N - 3; x++) if (c.g[I(x, z)] === 0) cands.push([x, z]);
+  for (let k = 0; k < 400 && spots.length < 7 && cands.length; k++) {
+    const [x, z] = cands[Math.floor(rng() * cands.length)];
+    if (spots.some(([a, b]) => Math.hypot(a - x, b - z) < 6) || Math.hypot(x - cx, z - cz) < 3) continue;
+    spots.push([x, z]);
+  }
+  for (const [x, z] of spots) {
+    addProp(c, x, z, { hx: 0.55, hz: 0.55, parts: [part('cyl', 0, 0.7, 0, 1.15, 1.4, 1.15, 0x8a5a2b), part('cyl', 0, 0.35, 0, 1.2, 0.09, 1.2, 0x555a60), part('cyl', 0, 1.05, 0, 1.2, 0.09, 1.2, 0x555a60), part('cyl', 0, 1.41, 0, 1.0, 0.04, 1.0, 0x5a3a1c)] });
+    c.barrels.push({ x: (x + 0.5) * CELL, z: (z + 0.5) * CELL });
+  }
+  // triciclo rojo, pelota y bancas
+  for (let k = 0; k < 3; k++) {
+    const [x, z] = cands[Math.floor(rng() * cands.length)] || [cx, cz + 2];
+    if (c.g[I(x, z)] !== 0) continue;
+    if (k === 0) addProp(c, x, z, { hx: 0.4, hz: 0.6, rot: rng() * 6, parts: [part('cyl', 0, 0.35, 0.45, 0.6, 0.06, 0.6, 0x222222), part('box', 0, 0.55, 0, 0.1, 0.5, 0.1, 0xd02020), part('box', 0, 0.8, -0.2, 0.5, 0.08, 0.35, 0xd02020), part('cyl', -0.3, 0.2, -0.3, 0.4, 0.05, 0.4, 0x222222), part('cyl', 0.3, 0.2, -0.3, 0.4, 0.05, 0.4, 0x222222)] });
+    else if (k === 1) addProp(c, x, z, { hx: 0.25, hz: 0.25, parts: [part('sphere', 0, 0.25, 0, 0.5, 0.5, 0.5, 0xe8d040), part('box', 0, 0.25, 0, 0.51, 0.06, 0.51, 0xd03030)] });
+    else addProp(c, x, z, { hx: 0.9, hz: 0.3, rot: rng() * 3, parts: [box(0, 0.45, 0, 1.8, 0.1, 0.5, 0x7a4a2a), box(-0.75, 0.22, 0, 0.1, 0.45, 0.4, 0x5a3a1c), box(0.75, 0.22, 0, 0.1, 0.45, 0.4, 0x5a3a1c)] });
+  }
+  const free = keepLargest(c);
+  c.barrels = c.barrels.filter(b => c.g[I(Math.floor(b.x / CELL), Math.floor(b.z / CELL))] === 2);
+  return { c, free };
+}
+
+export const VECINDAD_DEF = {
+  id: 'vecindad', name: 'La Vecindad del Chavo', icon: '🛢️', desc: 'Un patio con barriles, lavadero y puertas numeradas… ¡sin querer queriendo! ¡Desbloqueada!',
+  indoor: false, wallH: 5.4, sky: 0x8ec8f2, fog: [0xc9e3f4, 0.012], hemi: [0xffffff, 0x9a8a70, 1.25],
+  tex: { wall: ['vecindad', '#e3b43c', '#b5583c'], floor: ['checker', '#a86a46', '#cfa070'] },
+  lamp: { color: 0xffe2a8, int: 0, dist: 20 }, moon: 0xfff0d0, sunInt: 1.8, flicker: 0, drone: 30, gen: genVecindad,
+};
+
 /* ---------------------------- ZONA DE CONSTRUCCIÓN ---------------------------- */
 function genConstruction(def, rng) {
   const c = ctxNew(def, rng); border(c, 4); const rooms = [];
@@ -835,7 +901,7 @@ export function generateMap(def, seed) {
     const rng = makeRng((seed + attempt * 7919) >>> 0);
     const { c, free } = def.gen(def, rng);
     if (free.length < N * N * 0.22) continue;
-    return { def, seed, N, CELL, grid: c.g, hgt: c.hgt, hx: c.hx, hz: c.hz, props: c.props, lamps: c.lamps, sprites: c.sprites || [], texs: c.texs, srcDefs: c.srcDefs, free };
+    return { def, seed, N, CELL, grid: c.g, hgt: c.hgt, hx: c.hx, hz: c.hz, props: c.props, lamps: c.lamps, sprites: c.sprites || [], barrels: c.barrels || [], texs: c.texs, srcDefs: c.srcDefs, free };
   }
   throw new Error('No se pudo generar el mapa ' + def.id);
 }
