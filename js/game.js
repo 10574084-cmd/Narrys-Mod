@@ -302,6 +302,7 @@ export class Game {
     await this.setupPost();
     await this.buildMemes(opts.plan);
     this.intro = null; this.tele = []; this.darkT = 0; this._dark = null; this.spawnEntities();
+    if (this.cheat('allWeapons')) for (const t of Object.keys(WEAPONS)) this.giveWeapon(t);
     this.camera.position.set(this.player.x, 1.65, this.player.z); this.updateChunks(true);
     this.buildMini();
     this.sfx.init(def.drone);
@@ -1010,7 +1011,7 @@ export class Game {
   fire() {
     const w = this.weapon, def = w && WEAPONS[w.type], p = this.player, cam = this.camera;
     if (!w || !p.alive || w.cd > 0 || w.ammo <= 0) return;
-    w.ammo--; w.cd = def.cd; this.recoil = 1;
+    if (!this.cheat('ammo')) w.ammo--; w.cd = def.cd; this.recoil = 1; // cheat: munición infinita
     this.onEvent('stat', { k: 'shot', type: w.type, aiming: this.aimK > 0.5 });
     const d = cam.getWorldDirection(this._wd || (this._wd = new THREE.Vector3()));
     // impacto contra nextbots (la mira se tolera según el arma)
@@ -1151,7 +1152,9 @@ export class Game {
     this.sfx.spawn();
   }
 
-  botSpeed() { return 6.0 * DIFF[this.opts.diff] * (1 + 0.35 * Math.min(1, this.time / this.round)); }
+  // cheats: solo en partidas normales sin cooperativo ni jefes (y solo si se desbloquearon)
+  cheat(k) { const o = this.opts; return !!(o && o.cheats && o.cheats[k] && !o.boss && !o.coop); }
+  botSpeed() { return (this.cheat('slow') ? 0.5 : 1) * 6.0 * DIFF[this.opts.diff] * (1 + 0.35 * Math.min(1, this.time / this.round)); }
 
   alive() { return (this.guest ? ((this.snap && this.snap.h[3]) ? 1 : 0) : (this.player.alive ? 1 : 0)) + this.cpus.filter(c => c.alive).length; }
 
@@ -1219,8 +1222,8 @@ export class Game {
     const moving = len > 0.05;
     if (!moving) this.runLatch = false; // correr «alternar»: se suelta al detenerte
     const wantRun = (this.held('run') || this.runLatch || this.sprintBtn) && moving;
-    let speed = 5.0;
-    if (wantRun && p.stamina > 0 && !p.tired) { speed = 10.2; p.stamina -= dt * 0.1; if (p.stamina <= 0) { p.tired = true; this.onEvent('stat', { k: 'tired' }); } }
+    let speed = this.cheat('speed') ? 8.0 : 5.0;
+    if (wantRun && p.stamina > 0 && !p.tired) { speed = this.cheat('speed') ? 16 : 10.2; p.stamina -= dt * 0.1; if (p.stamina <= 0) { p.tired = true; this.onEvent('stat', { k: 'tired' }); } }
     else { p.stamina = Math.min(1, p.stamina + dt * (moving ? 0.1 : 0.2)); if (p.tired && p.stamina > 0.3) p.tired = false; }
     const sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
     const dx = (-sn * f + cs * s) * speed * dt, dz = (-cs * f - sn * s) * speed * dt;
@@ -1654,6 +1657,7 @@ export class Game {
 
   kill(e, bot) {
     if (!e.alive || e.invuln > 0) return;
+    if (e.type === 'player' && this.cheat('god')) return; // cheat: modo dios
     e.alive = false;
     if (e.type === 'cpu') {
       e.tag.visible = false; this.sfx.thud(clamp(1 - Math.hypot(e.x - this.player.x, e.z - this.player.z) / 40, 0.03, 0.5));

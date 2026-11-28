@@ -131,3 +131,6 @@ Escribir `ended?` en «Códigos secretos» muestra el texto **UPDATECOMINSOON** 
 
 ## Música de las partidas normales
 En las partidas normales suena `assets/music/round-chase.mp3` en bucle (volumen = el de Opciones). Se puede apagar en Opciones → «Música de fondo en las partidas normales». Los jefes siguen con su propia música.
+
+## Cheats (código `cheats`)
+Después de terminar ???, escribir `cheats` en «Códigos secretos» abre el menú de cheats (antes de terminarlo, o estando online, responde «Código incorrecto»). Opciones: modo dios, munición infinita, empezar con todas las armas, super velocidad, nextbots lentos y +1000 monedas. Solo se aplican en partidas normales sin cooperativo (no en jefes ni online) y mientras estén activos no ganas monedas.

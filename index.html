@@ -73,6 +73,21 @@
         <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
       </div>
 
+      <!-- CHEATS (solo tras terminar ???) -->
+      <div id="scrCheats" class="screen hidden">
+        <section class="card">
+          <h2>🧪 Cheats</h2>
+          <p class="hint">Solo funcionan en <b>partidas normales sin cooperativo</b> (no en jefes ni online). Mientras estén activos <b>no ganas monedas</b>.</p>
+          <label class="check"><input id="chGod" type="checkbox"> 🛡️ Modo dios (los nextbots no te atrapan)</label>
+          <label class="check"><input id="chAmmo" type="checkbox"> ♾️ Munición infinita</label>
+          <label class="check"><input id="chAll" type="checkbox"> 🔫 Empezar con todas las armas</label>
+          <label class="check"><input id="chSpeed" type="checkbox"> 💨 Super velocidad</label>
+          <label class="check"><input id="chSlow" type="checkbox"> 🐌 Nextbots lentos (mitad de velocidad)</label>
+          <div class="row" style="margin-top:12px"><button id="chCoins" class="btn" type="button">🪙 +1000 monedas</button><span class="hint" id="chMsg" style="margin:0 0 0 10px"></span></div>
+        </section>
+        <div class="navRow"><button class="menuBtn" data-go="scrMain">← Volver</button></div>
+      </div>
+
       <!-- TIENDA -->
       <div id="scrShop" class="screen hidden">
         <section class="card">

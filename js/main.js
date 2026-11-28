@@ -23,6 +23,7 @@ cfg.perf = Object.assign({}, DEFAULT_PERF, cfg.perf || {});
 cfg.extra = Object.assign({}, DEFAULT_EXTRA, cfg.extra || {});
 cfg.keys = Object.assign({}, DEFAULT_KEYS, cfg.keys || {});
 cfg.touch = Object.assign({}, DEFAULT_TOUCH, cfg.touch || {});
+cfg.cheats = Object.assign({ god: false, ammo: false, allWeapons: false, speed: false, slow: false }, cfg.cheats || {});
 const UKEY = 'narrysmod_unlocks_v1';
 const unlocks = (() => { try { return JSON.parse(localStorage.getItem(UKEY) || '{}'); } catch { return {}; } })();
 const saveUnl = () => { try { localStorage.setItem(UKEY, JSON.stringify(unlocks)); } catch { /* nada */ } };
@@ -298,7 +299,7 @@ async function play() {
     while (plan.length < total) plan.push(pool[Math.floor(Math.random() * pool.length)]);
     plan.sort(() => Math.random() - 0.5);
     $('loadText').textContent = cfg.quality === 'rt' ? 'Cargando efectos de raytracing…' : 'Construyendo escena…';
-    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), music: cfg.extra.music ? 'assets/music/round-chase.mp3' : undefined, map: cfg.map, cpus: cfg.size >= 200 ? Math.min(cfg.cpus, 30) : cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
+    await hostStart({ skin: Shop.currentSkin(), weapons: Shop.unlockedWeapons(), music: cfg.extra.music ? 'assets/music/round-chase.mp3' : undefined, cheats: cheatsOn() ? { ...cfg.cheats } : undefined, map: cfg.map, cpus: cfg.size >= 200 ? Math.min(cfg.cpus, 30) : cfg.cpus, bots: total, plan, perf: cfg.perf, extra: cfg.extra, keys: cfg.keys, diff: cfg.diff, size: cfg.size, choco: { size: cfg.choco.size, hp: cfg.choco.hp }, dur: cfg.dur, quality: cfg.quality, fov: cfg.fov, sens: cfg.sens / 10, name: cfg.name }, pool);
   } catch (err) {
     console.error(err); show('loading', false);
     alert('Error al iniciar: ' + (err && err.message ? err.message : err));
@@ -455,6 +456,12 @@ async function playBoss(kind = 'choco', inRush = false) {
   show('menu', false); show('loading', false); show('over', false); show('hud', true); show('pause', false);
   game.lock();
 }
+/* ---------- cheats (se desbloquean al terminar ???) ---------- */
+const CHEAT_IDS = [['chGod', 'god'], ['chAmmo', 'ammo'], ['chAll', 'allWeapons'], ['chSpeed', 'speed'], ['chSlow', 'slow']];
+function refreshCheats() { for (const [id, k] of CHEAT_IDS) $(id).checked = !!cfg.cheats[k]; }
+for (const [id, k] of CHEAT_IDS) $(id).onchange = () => { cfg.cheats[k] = $(id).checked; save(); };
+$('chCoins').onclick = () => { if (!unlocks.glitch || (coop && coop.friend)) return; Shop.addCoins(1000); renderShop(); $('chMsg').textContent = `+1000 🪙 (ahora tienes ${Shop.coins()})`; };
+const cheatsOn = () => !!(unlocks.glitch && !(coop && coop.friend) && Object.values(cfg.cheats).some(Boolean));
 function showSoon() { // código «ended?»: aviso y vuelta al menú principal
   show('soon', true);
   clearTimeout(showSoon.t); showSoon.t = setTimeout(() => { show('soon', false); go('scrMain'); }, 3500);
@@ -466,6 +473,7 @@ function tryCode() {
   if (code === 'odioelchocolate') { msg.textContent = '🍫 ¡Código correcto! Preparando el Boss Fight…'; $('codeIn').value = ''; A.unlock('code_choco'); playBoss('choco'); }
   else if (code === 'verity') { msg.textContent = '🙂 ¡Código correcto! Entrando a la casa de Verity…'; $('codeIn').value = ''; A.unlock('code_verity'); playBoss('verity'); }
   else if (code === 'sonic1exe') { msg.textContent = '💀 ¡Código correcto! Corrompiendo Green Hills…'; $('codeIn').value = ''; A.unlock('code_exe'); playBoss('exe'); }
+  else if (code === 'cheats' && unlocks.glitch && !(coop && coop.friend)) { $('codeIn').value = ''; msg.textContent = ''; refreshCheats(); go('scrCheats'); } // solo tras terminar ??? y sin estar online
   else if (code === 'ended') { $('codeIn').value = ''; msg.textContent = ''; showSoon(); }
   else if (!code) msg.textContent = '';
   else msg.textContent = '❌ Código incorrecto';
@@ -552,7 +560,7 @@ function renderShop() {
 }
 $('btnShop').onclick = $('coinBtn').onclick = () => { renderShop(); go('scrShop'); };
 renderShop();
-function earn(n) { n = Shop.addCoins(n); renderShop(); return n ? ` · +${n} 🪙` : ''; }
+function earn(n) { if (game.opts && game.opts.cheats && !game.opts.boss && !game.opts.coop) return ' · sin monedas (cheats activos)'; n = Shop.addCoins(n); renderShop(); return n ? ` · +${n} 🪙` : ''; }
 const roundCoins = (d, won) => earn(Math.floor(d.time / 12) + (won ? 30 : 0) + (game.bossDead ? (lastBoss === 'final' ? 800 : 200) : 0));
 $('trophyBtn').onclick = () => { A.render($('achList'), $('achHead')); go('scrAch'); };
 let achQ = [], achBusy = false;
