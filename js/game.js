@@ -1167,6 +1167,8 @@ export class Game {
     return true;
   }
   popOut(b) {
+    const sp = this.freeSpotNear(b.x, b.z, 1.6) || this.freeSpotNear(b.x, b.z, 2.4) || this.freeSpotNear(b.x, b.z, 3.2); // sale por un lado del barril (el barril es sólido)
+    if (sp) { b.x = sp.x; b.z = sp.z; b.lx = b.x; b.lz = b.z; }
     b.hidden = false; b.mesh.visible = true; b.halo.visible = true; b.flash = 0.4; b.path = null; b.retarget = 0;
     this.toast('🛢️ ¡EL CHAVO salió del barril!', 2200); this.feed('🛢️ ¡El Chavo salió de un barril!', true); this.sfx.spawn();
   }
